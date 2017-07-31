@@ -179,6 +179,12 @@ CEOfull$barren<- CEOfull$BARRENOTHER + CEOfull$MINING + CEOfull$MUDFLATBEACH
 CEOfull$grassShrub <- CEOfull$GRASS + CEOfull$SHRUB
 
 # start at 5
+i = 5
+colnames(CEO_sample)[i]
+CEO_sample[CEO_sample$partition == 1 & CEO_sample$CROP>50, i]
+i = i + 1
+
+# start at 5
 i = 6
 colnames(CEO_sample)[i]
 CEO_sample[CEO_sample$partition == 3 & CEO_sample$CROP<50, i]
@@ -193,12 +199,12 @@ commonTheme = list(labs(color="Density",fill="Density",
                         x=xlabel, y=y2label), theme_bw(),
                    theme(legend.position='none'))
 
-ggplot(data = CEOfull[CEOfull$built>0,],
-       aes(CEOfull$cropland[CEOfull$built>0], 
-                              CEOfull$built[CEOfull$built>0])) + 
+ggplot(data = CEOfull[CEOfull$BUILTSURFACE>0,],
+       aes(CEOfull$cropland[CEOfull$BUILTSURFACE>0], 
+                              CEOfull$BUILTSURFACE[CEOfull$BUILTSURFACE>0])) + 
   #stat_density_2d(geom = "raster", aes(fill = ..density..), contour = FALSE) + 
   stat_density_2d(aes(fill = ..level..), geom = "polygon")+
-  scale_fill_continuous(low="yellow",high="darkred") +
+  scale_fill_continuous(low="red",high="black") +
   guides(alpha="none") +
   geom_vline(xintercept = segmented.mod$psi[1, 2], colour = 'black', lwd = 1.5, lty = 2) +
   geom_vline(xintercept = segmented.mod$psi[2, 2], colour = 'black', lwd = 1.5, lty = 2) +
@@ -215,7 +221,7 @@ ggplot(data = CEOfull[CEOfull$AQUACULTUREPOND>0,],
            CEOfull$built[CEOfull$AQUACULTUREPOND>0])) + 
   #stat_density_2d(geom = "raster", aes(fill = ..density..), contour = FALSE) + 
   stat_density_2d(aes(fill = ..level..), geom = "polygon")+
-  scale_fill_continuous(low="yellow",high="darkred") +
+  scale_fill_continuous(low="aquamarine",high="darkblue") +
   guides(alpha="none") +
   geom_vline(xintercept = segmented.mod$psi[1, 2], colour = 'black', lwd = 1.5, lty = 2) +
   geom_vline(xintercept = segmented.mod$psi[2, 2], colour = 'black', lwd = 1.5, lty = 2) +

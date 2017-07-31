@@ -18,12 +18,12 @@ ydata <- CEO$TREEPLANTATIONORCHARD + CEO$TREEOTHER + CEO$TREEMANGROVE + CEO$BUIL
 xlabel <- "Predicted: Fractional Tree Cover"
 ylabel <- "Validation Data: Fractional Tree Cover"
 
-xdata <- CEO$cropland
-ydata <- CEO$CROP
+xdata <- CEO$builtup
+ydata <- CEO$BUILTSURFACE
 ID <- CEOfull$ID
 
-xlabel <- "Predicted: Prob of Crop Cover"
-ylabel <- "Validation Data: Fractional Crop Cover"
+xlabel <- "Predicted: Prob of Built-up"
+ylabel <- "Validation Data: Fractional Built-up Cover"
 
 #############################################
 ## sample the data by strata
@@ -179,7 +179,13 @@ CEOfull$barren<- CEOfull$BARRENOTHER + CEOfull$MINING + CEOfull$MUDFLATBEACH
 CEOfull$grassShrub <- CEOfull$GRASS + CEOfull$SHRUB
 
 # start at 5
-i = 6
+i = 5
+colnames(CEO_sample)[i]
+CEO_sample[CEO_sample$partition == 1 & CEO_sample$CROP>50, i]
+i = i + 1
+
+# start at 5
+i = 5
 colnames(CEO_sample)[i]
 CEO_sample[CEO_sample$partition == 3 & CEO_sample$CROP<50, i]
 i = i + 1
@@ -188,31 +194,30 @@ dim(CEO_sample)
 "SNOWICE", 
 "AQUATICVEGOTHER", 
 
-y2label <- 'Validation Data: Fractional Cover of Built Surfaces'
+y2label <- 'Validation Data: Fractional Cover of All Built, including gardens'
 commonTheme = list(labs(color="Density",fill="Density",
                         x=xlabel, y=y2label), theme_bw(),
                    theme(legend.position='none'))
 
 ggplot(data = CEOfull[CEOfull$built>0,],
-       aes(CEOfull$cropland[CEOfull$built>0], 
-                              CEOfull$built[CEOfull$built>0])) + 
+       aes(CEOfull$builtup[CEOfull$built>0], CEOfull$built[CEOfull$built>0])) + 
   #stat_density_2d(geom = "raster", aes(fill = ..density..), contour = FALSE) + 
   stat_density_2d(aes(fill = ..level..), geom = "polygon")+
-  scale_fill_continuous(low="yellow",high="darkred") +
+  scale_fill_continuous(low="red",high="black") +
   guides(alpha="none") +
   geom_vline(xintercept = segmented.mod$psi[1, 2], colour = 'black', lwd = 1.5, lty = 2) +
   geom_vline(xintercept = segmented.mod$psi[2, 2], colour = 'black', lwd = 1.5, lty = 2) +
   commonTheme +coord_cartesian(xlim = c(0, 100), ylim = c(0, 100)) 
 
 
-y2label <- 'Validation Data: Fractional Cover of Aquaculture Surfaces'
+y2label <- 'Validation Data: Fractional Cover of Cropland Surfaces'
 commonTheme = list(labs(color="Density",fill="Density",
                         x=xlabel, y=y2label), theme_bw(),
                    theme(legend.position='none'))
 
-ggplot(data = CEOfull[CEOfull$AQUACULTUREPOND>0,],
-       aes(CEOfull$cropland[CEOfull$AQUACULTUREPOND>0], 
-           CEOfull$built[CEOfull$AQUACULTUREPOND>0])) + 
+ggplot(data = CEOfull[CEOfull$CROP>0,],
+       aes(CEOfull$builtup[CEOfull$CROP>0], 
+           CEOfull$CROP[CEOfull$CROP>0])) + 
   #stat_density_2d(geom = "raster", aes(fill = ..density..), contour = FALSE) + 
   stat_density_2d(aes(fill = ..level..), geom = "polygon")+
   scale_fill_continuous(low="yellow",high="darkred") +
