@@ -8,18 +8,13 @@ library(segmented)
 
 ## Load in data.
 CEOfull <- read.csv('.\\AccuracyAssessment\\Data\\Validation_20170729.csv')
-colnamesfull(CEO)[49]<-'ephemeral'
+colnames(CEOfull)[49]<-'ephemeral'
 
 colnames(CEOfull)
 CEOfull$ID <- seq(1:length(CEOfull$ANALYSES))
   
-xdata <- CEO$tcc
-ydata <- CEO$TREEPLANTATIONORCHARD + CEO$TREEOTHER + CEO$TREEMANGROVE + CEO$BUILTTREE
-xlabel <- "Predicted: Fractional Tree Cover"
-ylabel <- "Validation Data: Fractional Tree Cover"
-
-xdata <- CEO$builtup
-ydata <- CEO$BUILTSURFACE
+xdata <- CEOfull$builtup
+ydata <- CEOfull$BUILTSURFACE
 ID <- CEOfull$ID
 
 xlabel <- "Predicted: Prob of Built-up"
@@ -109,6 +104,16 @@ if(length(segmented.mod$psi[ , 2]) == 1){
     segment3_y2 <- lmMod3$coefficients[1] + lmMod3$coefficients[2] * 100
   }
 
+mean(seg1Subset$xdata)
+sd(seg1Subset$xdata)
+
+mean(seg2Subset$xdata)
+sd(seg2Subset$xdata)
+
+mean(seg3Subset$xdata)
+sd(seg3Subset$xdata)
+
+summary(lmMod2)
 ###############################
 # plot data
 #commonTheme = list(labs(color="Density",fill="Density", x=xlabel, y=ylabel),
@@ -129,15 +134,14 @@ ggplot(data = CEO_sample ,aes(CEO_sample$xdata, CEO_sample$ydata)) +
   guides(alpha="none") +
   geom_vline(xintercept = segmented.mod$psi[1, 2], colour = 'black', lwd = 1.5, lty = 2) +
   geom_vline(xintercept = segmented.mod$psi[2, 2], colour = 'black', lwd = 1.5, lty = 2) +
-  commonTheme +coord_cartesian(xlim = c(0, 100), ylim = c(0, 100)) 
-#+
-#  geom_segment(aes(x = 1, y = segment1_y1, 
-#                   xend = segmented.mod$psi[1, 2], yend = segment1_y2)) +
+  commonTheme +coord_cartesian(xlim = c(0, 100), ylim = c(0, 100)) #+
 #  geom_segment(aes(x = segmented.mod$psi[1, 2], y = segment2_y1, 
-#                   xend = segmented.mod$psi[2, 2], yend = segment2_y2))+
-#  geom_segment(aes(x = segmented.mod$psi[2, 2], y = segment3_y1, 
-#                 xend = 100, yend = segment3_y2))+
-#  stat_smooth(method=lm) + geom_point()
+#                   xend = segmented.mod$psi[2, 2], yend = segment2_y2))
+  #  geom_segment(aes(x = 1, y = segment1_y1, 
+  #                   xend = segmented.mod$psi[1, 2], yend = segment1_y2)) +
+  #  geom_segment(aes(x = segmented.mod$psi[2, 2], y = segment3_y1, 
+  #                 xend = 100, yend = segment3_y2))+
+  #  stat_smooth(method=lm) + geom_point()
 
 summary(lm(ydata ~ xdata, data = CEO_sample))
 summary(lmMod1)

@@ -13,13 +13,8 @@ colnamesfull(CEO)[49]<-'ephemeral'
 colnames(CEOfull)
 CEOfull$ID <- seq(1:length(CEOfull$ANALYSES))
   
-xdata <- CEO$tcc
-ydata <- CEO$TREEPLANTATIONORCHARD + CEO$TREEOTHER + CEO$TREEMANGROVE + CEO$BUILTTREE
-xlabel <- "Predicted: Fractional Tree Cover"
-ylabel <- "Validation Data: Fractional Tree Cover"
-
-xdata <- CEO$cropland
-ydata <- CEO$CROP
+xdata <- CEOfull$cropland
+ydata <- CEOfull$CROP
 ID <- CEOfull$ID
 
 xlabel <- "Predicted: Prob of Crop Cover"
@@ -109,6 +104,18 @@ if(length(segmented.mod$psi[ , 2]) == 1){
     segment3_y2 <- lmMod3$coefficients[1] + lmMod3$coefficients[2] * 100
   }
 
+mean(seg1Subset$xdata)
+sd(seg1Subset$xdata)
+
+mean(seg2Subset$xdata)
+sd(seg2Subset$xdata)
+hist(seg2Subset$ydata)
+
+mean(seg3Subset$xdata)
+sd(seg3Subset$xdata)
+hist(seg3Subset$ydata)
+
+summary(lmMod2)
 ###############################
 # plot data
 #commonTheme = list(labs(color="Density",fill="Density", x=xlabel, y=ylabel),

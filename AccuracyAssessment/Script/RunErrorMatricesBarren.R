@@ -13,13 +13,8 @@ colnamesfull(CEO)[49]<-'ephemeral'
 colnames(CEOfull)
 CEOfull$ID <- seq(1:length(CEOfull$ANALYSES))
   
-xdata <- CEO$tcc
-ydata <- CEO$TREEPLANTATIONORCHARD + CEO$TREEOTHER + CEO$TREEMANGROVE + CEO$BUILTTREE
-xlabel <- "Predicted: Fractional Tree Cover"
-ylabel <- "Validation Data: Fractional Tree Cover"
-
-xdata <- CEO$barren
-ydata <- CEO$BARRENOTHER+CEO$MINING+CEO$MUDFLATBEACH
+xdata <- CEOfull$barren
+ydata <- CEOfull$BARRENOTHER+CEOfull$MINING+CEOfull$MUDFLATBEACH
 ID <- CEOfull$ID
 
 xlabel <- "Predicted: Prob of Barren (including mudflat, beaches, mining)"
@@ -109,6 +104,23 @@ if(length(segmented.mod$psi[ , 2]) == 1){
     segment3_y2 <- lmMod3$coefficients[1] + lmMod3$coefficients[2] * 100
   }
 
+mean(seg1Subset$xdata)
+sd(seg1Subset$xdata)
+hist(seg1Subset$ydata, 
+     main = 'distribution of fractional barren coverage, lower prob', xlab = 'fractional barren coverage')
+
+hist(seg2Subset$ydata, 
+     main = 'distribution of fractional barren coverage, upper prob', xlab = 'fractional barren coverage')
+
+mean(seg2Subset$xdata)
+sd(seg2Subset$xdata)
+hist(seg2Subset$xdata)
+
+mean(seg3Subset$xdata)
+sd(seg3Subset$xdata)
+
+summary(lmMod2)
+
 ###############################
 # plot data
 #commonTheme = list(labs(color="Density",fill="Density", x=xlabel, y=ylabel),
@@ -130,7 +142,8 @@ ggplot(data = CEO_sample ,aes(CEO_sample$xdata, CEO_sample$ydata)) +
   guides(alpha="none") +
   geom_vline(xintercept = segmented.mod$psi[1, 2], colour = 'black', lwd = 1.5, lty = 2) +
   #geom_vline(xintercept = segmented.mod$psi[2, 2], colour = 'black', lwd = 1.5, lty = 2) +
-  commonTheme +coord_cartesian(xlim = c(0, 100), ylim = c(0, 100)) 
+  commonTheme +coord_cartesian(xlim = c(0, 100), ylim = c(0, 100)) +
+  geom_point()
 #+
 #  geom_segment(aes(x = 1, y = segment1_y1, 
 #                   xend = segmented.mod$psi[1, 2], yend = segment1_y2)) +
