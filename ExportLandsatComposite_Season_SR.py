@@ -42,7 +42,7 @@ Example Usage
   $ python ee_ats_correct.py -p ~/eeAtsCorLut/ -y 2010 -s rainy
 
 """
-
+from __future__ import division, print_function
 import ee
 import math
 import pickle
@@ -67,29 +67,29 @@ class eeAtsCorrection(object):
         sensorBandDictLandsatTOA = {'L8': [1,2,3,4,5,9,6],
                                     'L7': [0,1,2,3,4,5,7],
                                     'L5': [0,1,2,3,4,5,6],
-                                    'L4': [0,1,2,3,4,5,6]})
-      bandNamesLandsatTOA = ['blue','green','red','nir','swir1','temp',
-                        'swir2']
+                                    'L4': [0,1,2,3,4,5,6]}
+        self.bandNamesLandsatTOA = ['blue','green','red','nir','swir1','temp','swir2']
+
         lt4 = ee.ImageCollection('LANDSAT/LT4_L1T_TOA')\
             .filterBounds(self.region).filterDate(self.iniDate,self.endDate)\
             .filter(ee.Filter.calendarRange(self.startJulian,self.endJulian))\
             .filterMetadata('CLOUD_COVER','less_than',metadataCloudCoverMax)\
-            .select(sensorBandDictLandsatTOA['L4'],bandNamesLandsatTOA)
+            .select(sensorBandDictLandsatTOA['L4'],self.bandNamesLandsatTOA)
         lt5 = ee.ImageCollection('LANDSAT/LT5_L1T_TOA')\
             .filterBounds(self.region).filterDate(self.iniDate,self.endDate)\
             .filter(ee.Filter.calendarRange(self.startJulian,self.endJulian))\
             .filterMetadata('CLOUD_COVER','less_than',metadataCloudCoverMax)\
-            .select(sensorBandDictLandsatTOA['L5'],bandNamesLandsatTOA)
+            .select(sensorBandDictLandsatTOA['L5'],self.bandNamesLandsatTOA)
         le7 = ee.ImageCollection('LANDSAT/LE7_L1T_TOA')\
             .filterBounds(self.region).filterDate(self.iniDate,self.endDate)\
             .filter(ee.Filter.calendarRange(self.startJulian,self.endJulian))\
             .filterMetadata('CLOUD_COVER','less_than',metadataCloudCoverMax)\
-            .select(sensorBandDictLandsatTOA['L7'],bandNamesLandsatTOA)
+            .select(sensorBandDictLandsatTOA['L7'],self.bandNamesLandsatTOA)
         lc8 = ee.ImageCollection('LANDSAT/LC8_L1T_TOA')\
             .filterBounds(self.region).filterDate(self.iniDate,self.endDate)\
             .filter(ee.Filter.calendarRange(self.startJulian,self.endJulian))\
             .filterMetadata('CLOUD_COVER','less_than',metadataCloudCoverMax)\
-            .select(sensorBandDictLandsatTOA['L8'],bandNamesLandsatTOA)
+            .select(sensorBandDictLandsatTOA['L8'],self.bandNamesLandsatTOA)
 
         collection = ee.ImageCollection(lt4.merge(lt5).merge(le7).merge(lc8))
         self.collectionMeta = collection.getInfo()['features']
@@ -98,12 +98,38 @@ class eeAtsCorrection(object):
         return masked_collection
 
 
-    def maskClouds(self,image,cloudThresh=20):
-        blank = ee.Image(0);
-        scored = ee.Algorithms.Landsat.simpleCloudScore(image)
-        clouds = blank.where(scored.select(['cloud']).lte(cloudThresh),1);
-        noClouds = image.updateMask(clouds).set("system:time_start",image.get("system:time_start"))
-        return noClouds
+    def maskClouds(self,img,cloudThresh=20):
+        def rescale(img,exp,thresholds):
+            outimg = img.expression(exp, {img: img})\
+                    .subtract(thresholds[0]).divide(thresholds[1] - thresholds[0])
+            return outimg
+
+        score = ee.Image(1.0);
+        # Clouds are reasonably bright in the blue band.
+        blue_rescale = img.select('blue').subtract(ee.Number(0.1)).divide(ee.Number(0.3).subtract(ee.Number(0.1)))
+        score = score.min(blue_rescale);
+
+        # Clouds are reasonably bright in all visible bands.
+        visible = img.select('red').add(img.select('green')).add(img.select('blue'))
+        visible_rescale = visible.subtract(ee.Number(0.2)).divide(ee.Number(0.8).subtract(ee.Number(0.2)))
+        score = score.min(visible_rescale);
+
+        # Clouds are reasonably bright in all infrared bands.
+        infrared = img.select('nir').add(img.select('swir1')).add(img.select('swir2'))
+        infrared_rescale = infrared.subtract(ee.Number(0.3)).divide(ee.Number(0.8).subtract(ee.Number(0.3)))
+        score = score.min(infrared_rescale);
+
+        # Clouds are reasonably cool in temperature.
+        temp_rescale = img.select('temp').subtract(ee.Number(300)).divide(ee.Number(290).subtract(ee.Number(300)))
+        score = score.min(temp_rescale);
+
+        # However, clouds are not snow.
+        ndsi = img.normalizedDifference(['green', 'swir1']);
+        ndsi_rescale = ndsi.subtract(ee.Number(0.8)).divide(ee.Number(0.6).subtract(ee.Number(0.8)))
+        score =  score.min(ndsi_rescale).multiply(100).byte();
+        score = score.lt(cloudThresh).rename(['cloudMask']);
+        img = img.updateMask(score);
+        return img.addBands(score);
 
     def maskShadows(self,collection,zScoreThresh=-0.8,shadowSumThresh=0.35,dilatePixels=2):
 
@@ -119,7 +145,7 @@ class eeAtsCorrection(object):
             outimg = image.updateMask(image.select(['TDOMMask']))
             return outimg
 
-        shadowSumBands = ['B4','B5']
+        shadowSumBands = ['nir','swir1']
 
         # Get some pixel-wise stats for the time series
         irStdDev = collection.select(shadowSumBands).reduce(ee.Reducer.stdDev())
@@ -130,10 +156,100 @@ class eeAtsCorrection(object):
 
         return collection_tdom.map(mask)
 
+    def addIndices(img):
+        # Add Normalized Difference Spectral Vector (NDSV)
+        img = img.addBands(img.normalizedDifference(['blue','green']).rename('ND_blue_green'))
+        img = img.addBands(img.normalizedDifference(['blue','red']).rename('ND_blue_red'))
+        img = img.addBands(img.normalizedDifference(['blue','nir']).rename('ND_blue_nir'))
+        img = img.addBands(img.normalizedDifference(['blue','swir1']).rename('ND_blue_swir1'))
+        img = img.addBands(img.normalizedDifference(['blue','swir2']).rename('ND_blue_swir2'))
+
+        img = img.addBands(img.normalizedDifference(['green','red']).rename('ND_green_red'))
+        img = img.addBands(img.normalizedDifference(['green','nir']).rename('ND_green_nir')) # NDWBI
+        img = img.addBands(img.normalizedDifference(['green','swir1']).rename('ND_green_swir1')) # NDSI, MNDWI
+        img = img.addBands(img.normalizedDifference(['green','swir2']).rename('ND_green_swir2'))
+
+        img = img.addBands(img.normalizedDifference(['red','swir1']).rename('ND_red_swir1'))
+        img = img.addBands(img.normalizedDifference(['red','swir2']).rename('ND_red_swir2'))
+
+        img = img.addBands(img.normalizedDifference(['nir','red']).rename('ND_nir_red')) # NDVI
+        img = img.addBands(img.normalizedDifference(['nir','swir1']).rename('ND_nir_swir1')) # NDWI, LSWI, -NDBI
+        img = img.addBands(img.normalizedDifference(['nir','swir2']).rename('ND_nir_swir2')) # NBR, MNDVI
+
+        img = img.addBands(img.normalizedDifference(['swir1','swir2']).rename('ND_swir1_swir2'))
+
+        # Add ratios
+        img = img.addBands(img.select('swir1').divide(img.select('nir')).rename('R_swir1_nir')) # ratio 5/4
+        img = img.addBands(img.select('red').divide(img.select('swir1')).rename('R_red_swir1')) # ratio 3/5
+
+        # Add Enhanced Vegetation Index (EVI)
+        evi = img.expression(
+        '2.5 * ((NIR - RED) / (NIR + 6 * RED - 7.5 * BLUE + 1))', {
+          'NIR': img.select('nir'),
+          'RED': img.select('red'),
+          'BLUE': img.select('blue')
+        }).float()
+        img = img.addBands(evi.rename('EVI'))
+
+        # Add Soil Adjust Vegetation Index (SAVI)
+        # using L = 0.5;
+        savi = img.expression(
+        '(NIR - RED) * (1 + 0.5)/(NIR + RED + 0.5)', {
+          'NIR': img.select('nir'),
+          'RED': img.select('red')
+        }).float()
+        img = img.addBands(savi.rename('SAVI'))
+
+        # Add Index-Based Built-Up Index (IBI)
+        ibi_a = img.expression(
+        '2*SWIR1/(SWIR1 + NIR)', {
+          'SWIR1': img.select('swir1'),
+          'NIR': img.select('nir')
+        }).rename('IBI_A')
+        ibi_b = img.expression(
+        '(NIR/(NIR + RED)) + (GREEN/(GREEN + SWIR1))', {
+          'NIR': img.select('nir'),
+          'RED': img.select('red'),
+          'GREEN': img.select('green'),
+          'SWIR1': img.select('swir1')
+        }).rename('IBI_B')
+        ibi_a = ibi_a.addBands(ibi_b)
+        ibi = ibi_a.normalizedDifference(['IBI_A','IBI_B'])
+        img = img.addBands(ibi.rename('IBI'))
+
+        return img
+
+    def getTasseledCap(image,bands) :
+        # Kauth-Thomas coefficients for Thematic Mapper data
+        coefficients = ee.Array([
+                [0.3037, 0.2793, 0.4743, 0.5585, 0.5082, 0.1863],
+                [-0.2848, -0.2435, -0.5436, 0.7243, 0.0840, -0.1800],
+                [0.1509, 0.1973, 0.3279, 0.3406, -0.7112, -0.4572],
+                [-0.8242, 0.0849, 0.4392, -0.0580, 0.2012, -0.2768],
+                [-0.3280, 0.0549, 0.1075, 0.1855, -0.4357, 0.8085],
+                [0.1084, -0.9022, 0.4120, 0.0573, -0.0251, 0.0238]
+                ]);
+        # Make an Array Image, with a 1-D Array per pixel.
+        arrayImage1D = image.select(bands).toArray();
+
+        # Make an Array Image with a 2-D Array per pixel, 6x1.
+        arrayImage2D = arrayImage1D.toArray(1);
+
+        componentsImage = ee.Image(coefficients)\
+        .matrixMultiply(arrayImage2D)\
+        .arrayProject([0])\
+        .arrayFlatten( # Get a multi-band image with TC-named bands.
+          [['brightness', 'greenness', 'wetness', 'fourth', 'fifth', 'sixth']])\
+        .float();
+
+        return image.addBands(componentsImage)
+
     def correctAts(self,image):
         esun = {'TM': [1958.00,1827.00,1551.00,1036.00,214.90,80.65],
                 'ETM':[1969.00,1840.00,1551.00,1044.00,225.70,82.07],
                 'OLI':[2004.57,1820.75,1549.49, 951.76,247.55,85.46]}
+
+        exportBands = ['blue','green','red','nir','swir1','swir2']
 
         metaData = self.collectionMeta[self.feature]['properties']
 
@@ -193,7 +309,7 @@ class eeAtsCorrection(object):
 
         for i in range(len(self.bands)):
             a,b = self.luts[sensorId][self.bands[i]](sunAngle,h2o,o3,aot,alt)
-            band = image.select(self.bands[i])
+            band = image.select(self.bandNamesLandsatTOA[i])
             denom = esun[sensorId][i]*math.cos(math.radians(sunAngle))
             numer = math.pi * dsun
             radiance = band.multiply(ee.Number(denom)).divide(ee.Number(numer))
@@ -221,8 +337,10 @@ def main():
                         help="Path to lookup tables to correct the atmosphere")
     parser.add_argument('--year','-y', type=str,required=True,
                         help="Year to perform the ats correction and save to asset format in 'YYYY'")
-    parser.add_argument('--season','-s', choices=['drycool','dryhot','rainy'],type=str,required=True,
+    parser.add_argument('--season','-s', choices=['drycool','dryhot','rainy'],type=str,
                         help="Season to create composite for, these align with SERVIR-Mekong's seasonal composite times")
+    parser.add_argument('--month','-m', choices=['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'],type=str,
+                        help="Month to create composite for")
 
     args = parser.parse_args() # get arguments
 
@@ -232,6 +350,7 @@ def main():
     # set sensor and band variables
     sensors = ['TM','ETM','OLI']
     bands = ['B1','B2','B3','B4','B5','B7']
+    exportBands = ['blue','green','red','nir','swir1','temp','swir2']
 
     # blank dictionary to store lookup tables
     luts = {}
@@ -252,9 +371,20 @@ def main():
 
     # handle seasons and the date ranges
     seasons = {'drycool':[305,59],'dryhot':[60,120],'rainy':[121,304]}
-    season = seasons[args.season]
-    startJulian = season[0]
-    endJulian = season[1]
+
+
+    months = {'jan':[1,31],'feb':[32,59]}
+
+    if args.season == None:
+        timing = args.month
+        month = months[args.month]
+        startJulian = month[0]
+        endJulian = month[1]
+    else:
+        timing = args.season
+        season = seasons[args.season]
+        startJulian = season[0]
+        endJulian = season[1]
 
     # read in year argument
     yr = int(args.year)
@@ -271,19 +401,22 @@ def main():
     zScoreThresh = -0.8;
     shadowSumThresh = 0.35;
 
+    print(startJulian, endJulian)
+
     # initialize atmospheric correction class and start process
     processor = eeAtsCorrection(iniDate,endDate,mekongRegion,bands,luts,startJulian,endJulian)
     collection_sr = processor.correct()
 
     # get the median SR value for compposite
-    season_sr = collection_sr.median().clip(mekongRegion)
+    season_sr = collection_sr.select(exportBands).median().clip(mekongRegion)
 
     # scale image to interger values
     compositeSR = season_sr.multiply(10000).int16()
 
     # set up export paths
-    exportName = 'Landsat_' + args.season + '_' + iniDate.split('-')[0] + '_' + endDate.split('-')[0]
-    exportPath = 'projects/servir-mekong/Composites/Landsat_'  + args.season + '/' + exportName;
+    exportName = 'Landsat_' + timing + '_' + iniDate.split('-')[0] + '_' + endDate.split('-')[0]
+    #exportPath = 'projects/servir-mekong/Composites/Landsat_'  + args.season + '/' + exportName;
+    exportPath = 'users/kelmarkert/' + exportName
 
     # define metadata for asset
     snippetName = 'ExportComposite_Seasonal_SR'
@@ -311,11 +444,12 @@ def main():
       assetId= exportPath,
       scale= 30,
       region=exportRegion,
-      maxPixels=1e13
+      maxPixels=1e13,
+      crs='EPSG:4326'
     )
     export.start() # begin task
 
-    print '\nExport has begun for image {0} to collection {1}\n'.format(exportName,exportPath.split('/'[:-1]))
+    print('\nExport has begun for image {0} to collection {1}\n'.format(exportName,exportPath.split('/')[-1]))
 
     return
 
