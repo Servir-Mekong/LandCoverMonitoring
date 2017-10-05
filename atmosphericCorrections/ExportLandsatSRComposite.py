@@ -367,8 +367,8 @@ def main():
         luts['{}'.format(sensors[i])] = temp # set sensor lookup tables for all bands
 
     # get the Mekong coutries + buffer region
-    #mekongBuffer = ee.FeatureCollection('projects/servir-hkh/LCMS/Mizoram_Pilot/mizoram_area')
-    mekongRegion = ee.Geometry.Rectangle([args.box[0],args.box[1],args.box[2],args.box[3]])
+    mekongBuffer = ee.FeatureCollection('ft:1LEGeqwlBCAlN61ie5ol24NdUDqB1MgpFR_sJNWQJ').geometry()
+    boxRegion = ee.Geometry.Rectangle([args.box[0],args.box[1],args.box[2],args.box[3]])
 
     # handle seasons and the date ranges
     seasons = {'drycool':[1,1,305,59],'dryhot':[4,1,60,120],'rainy':[8,1,121,304]}
@@ -428,15 +428,14 @@ def main():
     stdDevBands = ['blue','green','red','nir','swir1','temp','swir2']
 
     # initialize atmospheric correction class and start process
-    processor = eeAtsCorrection(iniDate,endDate,mekongRegion,bands,luts,startJulian,endJulian)
+    processor = eeAtsCorrection(iniDate,endDate,boxRegion,bands,luts,startJulian,endJulian)
     collection_sr = processor.correct()
 
     # get number of observations for the composite
     countPost = collection_sr.select(['blue']).count().rename(['count']);
 
     # get the median SR value for compposite
-    #srImg = metoidMosiac(collection_sr.select(medianBands)).clip(mekongRegion)
-    srImg = metoidMosiac(collection_sr.select(medianBands)).clip(mekongRegion)
+    srImg = metoidMosiac(collection_sr.select(medianBands)).clip(boxRegion).clip(mekongBuffer)
 
     #get the standard deviation SR values
     stdDevComposite = collection_sr.select(stdDevBands).reduce(ee.Reducer.stdDev())
@@ -462,7 +461,7 @@ def main():
     versionNumber = 1
 
     # get serializable geometry for export
-    exportRegion = mekongRegion.bounds().getInfo()['coordinates']
+    exportRegion = boxRegion.bounds().getInfo()['coordinates']
 
     # set metadata information
     compositeSR = compositeSR.set({
