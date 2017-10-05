@@ -20,7 +20,7 @@ head(AllData)
 unique(AllData$Country)
 
 ## Change column names before importing into EE.
-colnames(myfiles)<-c("PLOTID", "longitude", "latitude", "SIZEM", "SHAPE", 
+colnames(AllData)<-c("PLOTID", "longitude", "latitude", "SIZEM", "SHAPE", 
                      "FLAGGED", "ANALYSES", "SAMPLEPOINTS", "USERID", 
                      "BUILTSURFACE", "BUILTVEGNONTREE", "BUILTTREE", "MINING", 
                      "MUDFLATBEACH", "BARRENOTHER", "TREEPLANTATIONORCHARD", 
@@ -31,3 +31,4 @@ colnames(myfiles)<-c("PLOTID", "longitude", "latitude", "SIZEM", "SHAPE",
 
 ## Export as csv.
 write.csv(AllData, '.\\Data\\ceo-rlcms-Mekong.csv', row.names = F)
+
