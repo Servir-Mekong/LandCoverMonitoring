@@ -135,7 +135,10 @@ class environment(object):
 	
 	# bands for dividing
 	self.divideBands = ee.List(['blue','green','red','nir','swir1','swir2'])
-        
+	
+	#bands for stdev
+	stdDevBands = ee.List(['blue','green','red','nir','swir1','temp','swir2','ND_nir_red','ND_nir_swir2','ND_green_swir1']);
+
 	# apply defringe
         self.defringe = True
         
@@ -161,7 +164,7 @@ class environment(object):
 	self.calcMean = False
 
 	self.fillGaps = True
-	self.fillGapYears = 10
+	self.fillGapYears = 15
 
         # threshold for defringing landsat5 and 7
         self.fringeCountThreshold = 279
@@ -231,11 +234,7 @@ class SurfaceReflectance():
         """Run the SR model"""  
         
 	self.env.location = ee.Geometry.Polygon(geo) #ee.Geometry.Polygon(self.env.NgheAn)
-	#self.env.location = ee.Geometry.Polygon(self.env.NgheAn)
 
-	#self.env.location = ee.Geometry.Polygon([[102.716,18.615],[105.622,18.620],[105.540,22.451],[102.650,22.466],[104.716,18.615]])
-	#self.env.outputName = self.env.outputName + str(x) + str(y)
-	 
         logging.info('starting the model the model')
         	
 	print self.env.startJulian, self.env.endJulian
@@ -280,6 +279,8 @@ class SurfaceReflectance():
 	
 	if self.env.calcMedoid:
 	    img = self.medoidMosaic(collection) 
+	
+	#img = collection.median()
 	        
 	if self.env.fillGaps: 
 	    gapfilter = img.select(["blue"]).gt(0).multiply(self.env.startYear)
