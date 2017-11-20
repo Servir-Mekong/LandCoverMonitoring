@@ -73,6 +73,7 @@ class environment(object):
 	    self.startYear = int(args.year)-1
         
 	self.NgheAn = [[103.876,18.552],[105.806,18.552],[105.806,19.999],[103.876,19.999],[103.876,18.552]]
+	self.NgheAn = [[100.876,18.552],[105.806,18.552],[105.806,22.999],[100.876,22.999],[100.876,18.552]]
 	
         collectionName = "projects/servir-mekong/usgs_sr_composites/" + args.season 
 	
@@ -96,7 +97,8 @@ class environment(object):
         self.metadataCloudCoverMax = 70
         
         # threshold for landsatCloudScore
-        self.cloudThreshold = 1
+        self.cloudThreshold = 10
+	self.hazeThresh = 250
         
 	# apply a filter to filter for high values
 	self.filterPercentile = True
@@ -147,9 +149,11 @@ class environment(object):
         
         # user ID
         #self.userID = "users/servirmekong/assemblage/"
-        #self.userID = "users/servirmekong/temp/1NAmedoid_SurfacReflectance"
+        self.userID = "users/servirmekong/temp/NgheAnmedoid_"
         #self.userID = "projects/servir-mekong/usgs_sr_composites/" + args.season + "/" 
-        self.userID = "projects/servir-mekong/usgs_sr_composites/" + args.season + "/" 
+        
+	#self.userID = "projects/servir-mekong/usgs_sr_composites/" + args.season + "/" 
+	
 
        
         # define the landsat bands			           
@@ -164,7 +168,7 @@ class environment(object):
 	self.calcMean = False
 
 	self.fillGaps = True
-	self.fillGapYears = 12
+	self.fillGapYears = 5
 
         # threshold for defringing landsat5 and 7
         self.fringeCountThreshold = 279
@@ -237,7 +241,8 @@ class SurfaceReflectance():
 	
 	print "starting .. " + self.env.outputName
 	
-	self.env.location = ee.Geometry.Polygon(geo) #ee.Geometry.Polygon(self.env.NgheAn)
+	#self.env.location = ee.Geometry.Polygon(geo) #ee.Geometry.Polygon(self.env.NgheAn)
+	self.env.location = ee.Geometry.Polygon(self.env.NgheAn)
 
         logging.info('starting the model the model')
         	
@@ -245,20 +250,20 @@ class SurfaceReflectance():
    
 	# construct date objects
         startDate = ee.Date.fromYMD(self.env.startYear,1,1).advance(self.env.startJulian,'day')
-        endDate = ee.Date.fromYMD(self.env.endYear,12,31).advance(self.env.endJulian,'day') 
+        endDate = ee.Date.fromYMD(self.env.endYear,1,1).advance(self.env.endJulian-1,'day')
         
 	logging.info('startDate = ' + str(startDate.getInfo()))
-	logging.info('endDatDate = ' + str(startDate.getInfo()))
+	logging.info('endDatDate = ' + str(endDate.getInfo()))
 	logging.info('Cloudcover filter = ' + str(self.env.metadataCloudCoverMax))	
 	
         # get the images
         collection = self.GetLandsat(startDate,endDate,self.env.metadataCloudCoverMax).select(self.env.exportBands)
+
 	collection = collection.map(self.maskClouds)   
 	
 	count = collection.size();
         print('counted ' + str(count.getInfo()) +' images');    
 	
-  		
 	if self.env.applyTDOM:
 	    # years before and after
 	    y = int(self.env.TDOMyears / 2)
@@ -266,7 +271,7 @@ class SurfaceReflectance():
 	    end = ee.Date.fromYMD(self.env.startYear+y,1,1)
 	    self.fullCollection = self.returnCollection(start,end).select(self.env.exportBands)
 	    collection = self.maskShadows(collection)
-
+	
 	# filter for high outliers
 	if self.env.filterPercentile:
 	    # years before and after
@@ -279,13 +284,12 @@ class SurfaceReflectance():
 	    self.percentile = self.fullCollection.reduce(ee.Reducer.percentile([self.env.lowPercentile,self.env.highPercentile])) 
 	    collection = collection.map(self.MaskPercentile) 
 	
-	
-	
 	if self.env.calcMedoid:
 	    img = self.medoidMosaic(collection) 
 	
 	#img = collection.median()
-	        
+	
+
 	if self.env.fillGaps: 
 	    gapfilter = img.select(["blue"]).gt(0).multiply(self.env.startYear)
 	    img = img.addBands(gapfilter.rename(['gapfill']))
@@ -335,16 +339,17 @@ class SurfaceReflectance():
 
 	#print startDate, endDate, self.env.startJulian,self.env.endJulian	
         # landsat4 image collections 
-        if self.env.useL4:        
+        if self.env.useL4:   
             landsat4 =  ee.ImageCollection('LANDSAT/LT04/C01/T1_SR').filterDate(startDate,endDate).filterBounds(self.env.location)
-            landsat4 = landsat4.filterMetadata('CLOUD_COVER','less_than',metadataCloudCoverMax)
-            #landsat4 = landsat4.filter(ee.Filter.calendarRange(self.env.startJulian,self.env.endJulian))
-	    self.landsat4count  = str(landsat4.size().getInfo()) 
+	    landsat4 = landsat4.filter(ee.Filter.calendarRange(self.env.startJulian,self.env.endJulian))     
+	    landsat4 = landsat4.filterMetadata('CLOUD_COVER','less_than',metadataCloudCoverMax)
+	    self.landsat4count  = str(landsat4.size()) 
 	    if landsat4.size().getInfo() > 0:
 		if self.env.defringe == True:
 		     landsat4 =  landsat4.map(self.DefringeLandsat)
 		if self.env.maskSR == True:
 		    landsat4 = landsat4.map(self.CloudMaskSR)
+		    landsat4 = landsat4.map(self.maskHaze)  
 		if not merge:
 		    landsatCollection = landsat4.select(self.env.sensorBandDictLandsatSR.get('L4'),self.env.bandNamesLandsat)
 		    merge = True
@@ -352,14 +357,15 @@ class SurfaceReflectance():
         # landsat 5 image collections 
         if self.env.useL5:
             landsat5 =  ee.ImageCollection('LANDSAT/LT05/C01/T1_SR').filterDate(startDate,endDate).filterBounds(self.env.location)
-            landsat5 = landsat5.filterMetadata('CLOUD_COVER','less_than',metadataCloudCoverMax)
-            #landsat5 = landsat5.filter(ee.Filter.calendarRange(self.env.startJulian,self.env.endJulian))
+	    landsat5 = landsat5.filter(ee.Filter.calendarRange(self.env.startJulian,self.env.endJulian))
+	    landsat5 = landsat5.filterMetadata('CLOUD_COVER','less_than',metadataCloudCoverMax)
 	    self.landsat5count  = str(landsat5.size().getInfo()) 
 	    if landsat5.size().getInfo() > 0:
 		if self.env.defringe == True:
 		     landsat5 =  landsat5.map(self.DefringeLandsat)
 		if self.env.maskSR == True:
 		    landsat5 = landsat5.map(self.CloudMaskSR)
+		    landsat5 = landsat5.map(self.maskHaze)  
 		if not merge:
 		    landsatCollection = landsat5.select(self.env.sensorBandDictLandsatSR.get('L5'),self.env.bandNamesLandsat)
 		    merge = True
@@ -370,6 +376,7 @@ class SurfaceReflectance():
         l7slm = True
 	if self.env.useL7:
             landsat7 =  ee.ImageCollection('LANDSAT/LE07/C01/T1_SR').filterDate(startDate,endDate).filterBounds(self.env.location)
+	    landsat7 = landsat7.filter(ee.Filter.calendarRange(self.env.startJulian,self.env.endJulian))
 	    if self.env.startYear == 2003 or self.env.endYear == 2003:
 		if self.env.useL7scanline == False:
 		    landsat7 = landsat7.filterDate(startDate,self.env.l7Failed)
@@ -377,13 +384,13 @@ class SurfaceReflectance():
 		l7slm = False
 	    if l7slm == True:
 		landsat7 = landsat7.filterMetadata('CLOUD_COVER','less_than',metadataCloudCoverMax)
-		#landsat7 = landsat7.filter(ee.Filter.calendarRange(self.env.startJulian,self.env.endJulian))
 		self.landsat7count = str(landsat7.size().getInfo()) 
 		if landsat7.size().getInfo() > 0:
-		    if self.env.defringe == True:
-			landsat7 =  landsat7.map(self.DefringeLandsat)            
+		    #if self.env.defringe == True:
+		    #	landsat7 =  landsat7.map(self.DefringeLandsat)            
 		    if self.env.maskSR == True:
 			landsat7 = landsat7.map(self.CloudMaskSR)
+			landsat7 = landsat7.map(self.maskHaze)  
 		    if not merge:
 			landsatCollection = landsat7.select(self.env.sensorBandDictLandsatSR.get('L7'),self.env.bandNamesLandsat)
 			merge = True
@@ -393,8 +400,8 @@ class SurfaceReflectance():
         # landsat8  image collections 				        
         if self.env.useL8:
             landsat8 =  ee.ImageCollection('LANDSAT/LC08/C01/T1_SR').filterDate(startDate,endDate).filterBounds(self.env.location)
+	    landsat8 = landsat8.filter(ee.Filter.calendarRange(self.env.startJulian,self.env.endJulian))
             landsat8 = landsat8.filterMetadata('CLOUD_COVER','less_than',metadataCloudCoverMax)
-            #landsat8 = landsat8.filter(ee.Filter.calendarRange(self.env.startJulian,self.env.endJulian))
 	    self.landsat8count =str(landsat8.size().getInfo())
 	    if landsat8.size().getInfo() > 0:
 		if self.env.maskSR == True:
@@ -407,9 +414,9 @@ class SurfaceReflectance():
    
 	if merge:
 	    count = landsatCollection.size();
-		
+			    
 	    landsatCollection = landsatCollection.map(self.ScaleLandsat)         
-		
+	         	    
 	    # return the image collection           
 	    return ee.ImageCollection(landsatCollection)
        
@@ -467,14 +474,15 @@ class SurfaceReflectance():
         
 	thermalBand = ee.List(['thermal'])
 	gapfillBand = ee.List(['gapfill'])
-	thermal = ee.Image(img).select(thermalBand).multiply(10)
+	#thermal = ee.Image(img).select(thermalBand).multiply(10)
 	gapfill = ee.Image(img).select('gapfill')
 	
 	otherBands = ee.Image(img).bandNames().removeAll(thermalBand)
 	otherBands = otherBands.removeAll(gapfillBand)
         scaled = ee.Image(img).select(otherBands).divide(0.0001)
 	
-	image = ee.Image(scaled.addBands(thermal).addBands(gapfill)).int16()
+	#image = ee.Image(scaled.addBands(thermal).addBands(gapfill)).int16()
+	image = ee.Image(scaled.addBands(gapfill)).int16()
         logging.info('return scaled image')
         
 	return image.copyProperties(img)
@@ -525,7 +533,11 @@ class SurfaceReflectance():
 	    
 	return img
 
-
+    def maskHaze(self,img):
+	""" mask haze """
+	opa = ee.Image(img.select(['sr_atmos_opacity']).multiply(0.001))
+	haze = opa.gt(self.env.hazeThresh)
+	return img.updateMask(haze.Not())
  
 
     def maskClouds(self,img):
@@ -592,7 +604,6 @@ class SurfaceReflectance():
 	image = ee.Image(img).set({'system:time_start':startDate.millis(), \
 				    'startyear':self.env.startYear, \
 			            'endyear':self.env.endYear, \
-			            'startJulian':self.env.startJulian, \
 			            'startJulian':self.env.startJulian, \
 		                    'endJulian':self.env.endJulian,
 				    'source':'USGS_SR',\
@@ -702,23 +713,21 @@ class SurfaceReflectance():
 	""" Function to unmask nodata withpixels previous year """
 	
 	print "unmasking for year " + str(self.env.startYear-year) 
-	startDate = ee.Date.fromYMD(self.env.startYear-year,1,1)
-	endDate = ee.Date.fromYMD(self.env.endYear-year,12,31)    
-	prev = self.GetLandsat(startDate,endDate,self.env.metadataCloudCoverMax)
-	if prev.size().getInfo() > 0:
-	    prev = self.maskShadows(prev.select(self.env.exportBands))
-	    prev = prev.map(self.MaskPercentile) 
-	    previmg = self.medoidMosaic(prev) 
+	if self.env.startYear-year > 1984:
+	    startDate = ee.Date.fromYMD(self.env.startYear-year,1,1)
+	    endDate = ee.Date.fromYMD(self.env.endYear-year,12,31)    
+	    prev = self.GetLandsat(startDate,endDate,self.env.metadataCloudCoverMax)
+	    if prev.size().getInfo() > 0:
+		prev = self.maskShadows(prev.select(self.env.exportBands))
+		prev = prev.map(self.MaskPercentile) 
+		previmg = self.medoidMosaic(prev) 
+		previmg = previmg.mask(previmg.gt(0))
+		gapfilter = previmg.select(["blue"]).gt(0).multiply(self.env.startYear-year)
+		previmg = previmg.addBands(gapfilter.rename(['gapfill']))
+		
+		img = img.unmask(previmg)
 	    
-	    #previmg = ee.Image(prev.median())
-	    
-	    previmg = previmg.mask(previmg.gt(0))
-	    gapfilter = previmg.select(["blue"]).gt(0).multiply(self.env.startYear-year)
-	    previmg = previmg.addBands(gapfilter.rename(['gapfill']))
-	    
-	    img = img.unmask(previmg)
-	
-	return ee.Image(img)
+	    return ee.Image(img)
 
     def unmaskFutureYears(self,img,year):
 	""" Function to unmask nodata withpixels future year """
@@ -730,13 +739,13 @@ class SurfaceReflectance():
 	if prev.size().getInfo() > 0:
 	    prev = self.maskShadows(prev.select(self.env.exportBands))
 	    prev = prev.map(self.MaskPercentile) 
-	    prev = prev.map(self.MaskPercentile) 
+
 	    previmg = self.medoidMosaic(prev) 	    
 	    previmg = previmg.mask(previmg.gt(0))
 	    gapfilter = previmg.select(["blue"]).gt(0).multiply(self.env.startYear-year)
 	    previmg = previmg.addBands(gapfilter.rename(['gapfill']))
 	    
-	    img = img.unmask(previmg)
+	    img = ee.Image(img).unmask(previmg)
 	return ee.Image(img)
 
     def makeTiles(self):
@@ -815,8 +824,9 @@ class SurfaceReflectance():
     def medoidMosaic(self,collection):
 	""" medoid composite with equal weight among indices """
 	
-	f = ee.Image(collection.first());
-	bandNames = f.bandNames();
+	collection = collection.select(self.env.divideBands)
+
+	bandNames = self.env.divideBands;
 	bandNumbers = ee.List.sequence(1,bandNames.length());
 	median = ee.ImageCollection(collection).median();
 	
@@ -869,5 +879,5 @@ if __name__ == "__main__":
     # create a new file in ~/.config/earthengine/credentials with token of user
     addUserCredentials(userName)
     geom = ''    
-    #SurfaceReflectance().RunModel(geom,1,1)
-    SurfaceReflectance().makeTiles()
+    SurfaceReflectance().RunModel(geom,1,1)
+    #SurfaceReflectance().makeTiles()
