@@ -105,7 +105,7 @@ class environment(object):
 	self.filterPercentileYears = 10
         # percentiles to filter for bad data
         self.lowPercentile = 1
-        self.highPercentile = 66
+        self.highPercentile = 80
 
         # whether to use imagecolletions
         self.useL4=True
@@ -149,7 +149,7 @@ class environment(object):
         
         # user ID
         #self.userID = "users/servirmekong/assemblage/"
-        self.userID = "users/servirmekong/temp/NgheAnmedoid_"
+        self.userID = "users/servirmekong/temp/02nghean_medoid_"
         #self.userID = "projects/servir-mekong/usgs_sr_composites/" + args.season + "/" 
         
 	#self.userID = "projects/servir-mekong/usgs_sr_composites/" + args.season + "/" 
@@ -168,7 +168,7 @@ class environment(object):
 	self.calcMean = False
 
 	self.fillGaps = True
-	self.fillGapYears = 5
+	self.fillGapYears = 10
 
         # threshold for defringing landsat5 and 7
         self.fringeCountThreshold = 279
@@ -241,8 +241,8 @@ class SurfaceReflectance():
 	
 	print "starting .. " + self.env.outputName
 	
-	#self.env.location = ee.Geometry.Polygon(geo) #ee.Geometry.Polygon(self.env.NgheAn)
-	self.env.location = ee.Geometry.Polygon(self.env.NgheAn)
+	self.env.location = ee.Geometry.Polygon(geo) #ee.Geometry.Polygon(self.env.NgheAn)
+	#self.env.location = ee.Geometry.Polygon(self.env.NgheAn)
 
         logging.info('starting the model the model')
         	
@@ -719,7 +719,8 @@ class SurfaceReflectance():
 	    prev = self.GetLandsat(startDate,endDate,self.env.metadataCloudCoverMax)
 	    if prev.size().getInfo() > 0:
 		prev = self.maskShadows(prev.select(self.env.exportBands))
-		prev = prev.map(self.MaskPercentile) 
+		if self.env.filterPercentile:
+		    prev = prev.map(self.MaskPercentile) 
 		previmg = self.medoidMosaic(prev) 
 		previmg = previmg.mask(previmg.gt(0))
 		gapfilter = previmg.select(["blue"]).gt(0).multiply(self.env.startYear-year)
@@ -738,8 +739,8 @@ class SurfaceReflectance():
 	prev = self.GetLandsat(startDate,endDate,self.env.metadataCloudCoverMax)
 	if prev.size().getInfo() > 0:
 	    prev = self.maskShadows(prev.select(self.env.exportBands))
-	    prev = prev.map(self.MaskPercentile) 
-
+	    if self.env.filterPercentile:
+		prev = prev.map(self.MaskPercentile) 
 	    previmg = self.medoidMosaic(prev) 	    
 	    previmg = previmg.mask(previmg.gt(0))
 	    gapfilter = previmg.select(["blue"]).gt(0).multiply(self.env.startYear-year)
@@ -879,5 +880,5 @@ if __name__ == "__main__":
     # create a new file in ~/.config/earthengine/credentials with token of user
     addUserCredentials(userName)
     geom = ''    
-    SurfaceReflectance().RunModel(geom,1,1)
-    #SurfaceReflectance().makeTiles()
+    #SurfaceReflectance().RunModel(geom,1,1)
+    SurfaceReflectance().makeTiles()
