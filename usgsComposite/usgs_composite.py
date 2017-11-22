@@ -139,7 +139,7 @@ class environment(object):
 	self.divideBands = ee.List(['blue','green','red','nir','swir1','swir2'])
 	
 	#bands for stdev
-	stdDevBands = ee.List(['blue','green','red','nir','swir1','temp','swir2','ND_nir_red','ND_nir_swir2','ND_green_swir1']);
+	self.stdDevBands = ee.List(['blue','green','red','nir','swir1','thermal','swir2']) #,'ND_nir_red','ND_nir_swir2','ND_green_swir1']);
 
 	# apply defringe
         self.defringe = True
@@ -149,7 +149,7 @@ class environment(object):
         
         # user ID
         #self.userID = "users/servirmekong/assemblage/"
-        self.userID = "users/servirmekong/temp/02nghean_medoid_"
+        self.userID = "users/servirmekong/temp/04nghean_medoid_"
         #self.userID = "projects/servir-mekong/usgs_sr_composites/" + args.season + "/" 
         
 	#self.userID = "projects/servir-mekong/usgs_sr_composites/" + args.season + "/" 
@@ -241,8 +241,8 @@ class SurfaceReflectance():
 	
 	print "starting .. " + self.env.outputName
 	
-	self.env.location = ee.Geometry.Polygon(geo) #ee.Geometry.Polygon(self.env.NgheAn)
-	#self.env.location = ee.Geometry.Polygon(self.env.NgheAn)
+	#self.env.location = ee.Geometry.Polygon(geo) #ee.Geometry.Polygon(self.env.NgheAn)
+	self.env.location = ee.Geometry.Polygon(self.env.NgheAn)
 
         logging.info('starting the model the model')
         	
@@ -283,6 +283,8 @@ class SurfaceReflectance():
 	    self.fullCollection = self.returnCollection(start,end).select(self.env.exportBands) 	
 	    self.percentile = self.fullCollection.reduce(ee.Reducer.percentile([self.env.lowPercentile,self.env.highPercentile])) 
 	    collection = collection.map(self.MaskPercentile) 
+
+	stdDevComposite = collection.select(self.env.stdDevBands).reduce(ee.Reducer.stdDev());
 	
 	if self.env.calcMedoid:
 	    img = self.medoidMosaic(collection) 
@@ -829,7 +831,9 @@ class SurfaceReflectance():
 
 	bandNames = self.env.divideBands;
 	bandNumbers = ee.List.sequence(1,bandNames.length());
-	median = ee.ImageCollection(collection).median();
+	
+	# calculate the median of the thermal band
+	thermal = ee.ImageCollection(collection.select(['thermal'])).median()
 	
 	def subtractmedian(img):
 	    diff = ee.Image(img).subtract(median).pow(ee.Image.constant(2));
@@ -839,7 +843,7 @@ class SurfaceReflectance():
   
 	medoid = ee.ImageCollection(medoid).reduce(ee.Reducer.min(bandNames.length().add(1))).select(bandNumbers,bandNames);
   
-	return medoid;
+	return medoid.addBands(thermal);
 
 
 
@@ -880,5 +884,5 @@ if __name__ == "__main__":
     # create a new file in ~/.config/earthengine/credentials with token of user
     addUserCredentials(userName)
     geom = ''    
-    #SurfaceReflectance().RunModel(geom,1,1)
-    SurfaceReflectance().makeTiles()
+    SurfaceReflectance().RunModel(geom,1,1)
+    #SurfaceReflectance().makeTiles()
