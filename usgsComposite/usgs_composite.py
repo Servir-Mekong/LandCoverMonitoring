@@ -84,7 +84,7 @@ class environment(object):
 	
 	# variables for the tdom filter
 	self.applyTDOM = True
-	self.TDOMyears = 10
+	self.TDOMyears = 4
 	self.shadowSumBands = ['nir','swir1'];
 	self.zScoreThresh = -0.8
 	self.shadowSumThresh = 0.35;
@@ -98,14 +98,14 @@ class environment(object):
         
         # threshold for landsatCloudScore
         self.cloudThreshold = 10
-	self.hazeThresh = 250
+	self.hazeThresh = 200
         
 	# apply a filter to filter for high values
 	self.filterPercentile = True
-	self.filterPercentileYears = 10
+	self.filterPercentileYears = 2
         # percentiles to filter for bad data
         self.lowPercentile = 1
-        self.highPercentile = 80
+        self.highPercentile = 90
 
         # whether to use imagecolletions
         self.useL4=True
@@ -140,6 +140,7 @@ class environment(object):
 	
 	#bands for stdev
 	self.stdDevBands = ee.List(['blue','green','red','nir','swir1','thermal','swir2']) #,'ND_nir_red','ND_nir_swir2','ND_green_swir1']);
+	self.stdDevExportsBands = ee.List(['blue_stdev','green_stdev','red_stdev','nir_stdev','swir1_stdev','thermal_stdev','swir2_stdev']) #,'ND_nir_red','ND_nir_swir2','ND_green_swir1']);
 
 	# apply defringe
         self.defringe = True
@@ -149,7 +150,7 @@ class environment(object):
         
         # user ID
         #self.userID = "users/servirmekong/assemblage/"
-        self.userID = "users/servirmekong/temp/04nghean_medoid_"
+        self.userID = "projects/servir-mekong/temp/07nghean_medoid_"
         #self.userID = "projects/servir-mekong/usgs_sr_composites/" + args.season + "/" 
         
 	#self.userID = "projects/servir-mekong/usgs_sr_composites/" + args.season + "/" 
@@ -168,7 +169,7 @@ class environment(object):
 	self.calcMean = False
 
 	self.fillGaps = True
-	self.fillGapYears = 10
+	self.fillGapYears = 2
 
         # threshold for defringing landsat5 and 7
         self.fringeCountThreshold = 279
@@ -289,6 +290,8 @@ class SurfaceReflectance():
 	if self.env.calcMedoid:
 	    img = self.medoidMosaic(collection) 
 	
+	img = img.addBands(stdDevComposite)
+
 	#img = collection.median()
 	
 
@@ -476,15 +479,15 @@ class SurfaceReflectance():
         
 	thermalBand = ee.List(['thermal'])
 	gapfillBand = ee.List(['gapfill'])
-	#thermal = ee.Image(img).select(thermalBand).multiply(10)
+	thermal = ee.Image(img).select(thermalBand).multiply(10)
 	gapfill = ee.Image(img).select('gapfill')
 	
 	otherBands = ee.Image(img).bandNames().removeAll(thermalBand)
 	otherBands = otherBands.removeAll(gapfillBand)
         scaled = ee.Image(img).select(otherBands).divide(0.0001)
 	
-	#image = ee.Image(scaled.addBands(thermal).addBands(gapfill)).int16()
-	image = ee.Image(scaled.addBands(gapfill)).int16()
+	image = ee.Image(scaled.addBands(thermal).addBands(gapfill)).int16()
+	#image = ee.Image(scaled.addBands(gapfill)).int16()
         logging.info('return scaled image')
         
 	return image.copyProperties(img)
@@ -722,11 +725,12 @@ class SurfaceReflectance():
 	    if prev.size().getInfo() > 0:
 		prev = self.maskShadows(prev.select(self.env.exportBands))
 		if self.env.filterPercentile:
-		    prev = prev.map(self.MaskPercentile) 
+		    prev = prev.map(self.MaskPercentile)
+		stdDevComposite = prev.select(self.env.stdDevBands).reduce(ee.Reducer.stdDev());     
 		previmg = self.medoidMosaic(prev) 
 		previmg = previmg.mask(previmg.gt(0))
 		gapfilter = previmg.select(["blue"]).gt(0).multiply(self.env.startYear-year)
-		previmg = previmg.addBands(gapfilter.rename(['gapfill']))
+		previmg = previmg.addBands(gapfilter.rename(['gapfill'])).addBands(stdDevComposite)
 		
 		img = img.unmask(previmg)
 	    
@@ -741,12 +745,13 @@ class SurfaceReflectance():
 	prev = self.GetLandsat(startDate,endDate,self.env.metadataCloudCoverMax)
 	if prev.size().getInfo() > 0:
 	    prev = self.maskShadows(prev.select(self.env.exportBands))
+	    stdDevComposite = prev.select(self.env.stdDevBands).reduce(ee.Reducer.stdDev()); 
 	    if self.env.filterPercentile:
 		prev = prev.map(self.MaskPercentile) 
 	    previmg = self.medoidMosaic(prev) 	    
 	    previmg = previmg.mask(previmg.gt(0))
 	    gapfilter = previmg.select(["blue"]).gt(0).multiply(self.env.startYear-year)
-	    previmg = previmg.addBands(gapfilter.rename(['gapfill']))
+	    previmg = previmg.addBands(gapfilter.rename(['gapfill'])).addBands(stdDevComposite)
 	    
 	    img = ee.Image(img).unmask(previmg)
 	return ee.Image(img)
@@ -827,8 +832,8 @@ class SurfaceReflectance():
     def medoidMosaic(self,collection):
 	""" medoid composite with equal weight among indices """
 	
-	# calculate the median
-	median = ee.ImageCollection(collection.select(['thermal'])).median()
+	# calculate the median of temp band
+	thermal = ee.ImageCollection(collection.select(['thermal'])).median()
 		
 	collection = collection.select(self.env.divideBands)
 
@@ -836,7 +841,7 @@ class SurfaceReflectance():
 	bandNumbers = ee.List.sequence(1,bandNames.length());
 	
 	# calculate medion
-	thermal = ee.ImageCollection(collection).median()
+	median = ee.ImageCollection(collection).median()
 	
 	def subtractmedian(img):
 	    diff = ee.Image(img).subtract(median).pow(ee.Image.constant(2));
