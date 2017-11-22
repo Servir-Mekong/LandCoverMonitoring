@@ -827,13 +827,16 @@ class SurfaceReflectance():
     def medoidMosaic(self,collection):
 	""" medoid composite with equal weight among indices """
 	
+	# calculate the median
+	median = ee.ImageCollection(collection.select(['thermal'])).median()
+		
 	collection = collection.select(self.env.divideBands)
 
 	bandNames = self.env.divideBands;
 	bandNumbers = ee.List.sequence(1,bandNames.length());
 	
-	# calculate the median of the thermal band
-	thermal = ee.ImageCollection(collection.select(['thermal'])).median()
+	# calculate medion
+	thermal = ee.ImageCollection(collection).median()
 	
 	def subtractmedian(img):
 	    diff = ee.Image(img).subtract(median).pow(ee.Image.constant(2));
