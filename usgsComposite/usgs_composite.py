@@ -84,7 +84,7 @@ class environment(object):
 	
 	# variables for the tdom filter
 	self.applyTDOM = True
-	self.TDOMyears = 4
+	self.TDOMyears = 10
 	self.shadowSumBands = ['nir','swir1'];
 	self.zScoreThresh = -0.8
 	self.shadowSumThresh = 0.35;
@@ -105,7 +105,7 @@ class environment(object):
 	self.filterPercentileYears = 2
         # percentiles to filter for bad data
         self.lowPercentile = 1
-        self.highPercentile = 90
+        self.highPercentile = 80
 
         # whether to use imagecolletions
         self.useL4=True
@@ -169,7 +169,7 @@ class environment(object):
 	self.calcMean = False
 
 	self.fillGaps = True
-	self.fillGapYears = 2
+	self.fillGapYears = 5
 
         # threshold for defringing landsat5 and 7
         self.fringeCountThreshold = 279
@@ -242,8 +242,8 @@ class SurfaceReflectance():
 	
 	print "starting .. " + self.env.outputName
 	
-	#self.env.location = ee.Geometry.Polygon(geo) #ee.Geometry.Polygon(self.env.NgheAn)
-	self.env.location = ee.Geometry.Polygon(self.env.NgheAn)
+	self.env.location = ee.Geometry.Polygon(geo) #ee.Geometry.Polygon(self.env.NgheAn)
+	#self.env.location = ee.Geometry.Polygon(self.env.NgheAn)
 
         logging.info('starting the model the model')
         	
@@ -477,7 +477,7 @@ class SurfaceReflectance():
     def reScaleLandsat(self,img):
         """Landast is scaled by factor 0.0001 """
         
-	thermalBand = ee.List(['thermal'])
+	thermalBand = ee.List(['thermal','thermal_stdDev'])
 	gapfillBand = ee.List(['gapfill'])
 	thermal = ee.Image(img).select(thermalBand).multiply(10)
 	gapfill = ee.Image(img).select('gapfill')
@@ -892,5 +892,5 @@ if __name__ == "__main__":
     # create a new file in ~/.config/earthengine/credentials with token of user
     addUserCredentials(userName)
     geom = ''    
-    SurfaceReflectance().RunModel(geom,1,1)
-    #SurfaceReflectance().makeTiles()
+    #SurfaceReflectance().RunModel(geom,1,1)
+    SurfaceReflectance().makeTiles()
