@@ -73,7 +73,7 @@ class environment(object):
 	    self.startYear = int(args.year)-1
         
 	self.NgheAn = [[103.876,18.552],[105.806,18.552],[105.806,19.999],[103.876,19.999],[103.876,18.552]]
-	self.NgheAn = [[100.876,18.552],[105.806,18.552],[105.806,22.999],[100.876,22.999],[100.876,18.552]]
+	#self.NgheAn = [[100.876,18.552],[105.806,18.552],[105.806,22.999],[100.876,22.999],[100.876,18.552]]
 	
         collectionName = "projects/servir-mekong/usgs_sr_composites/" + args.season 
 	
@@ -84,7 +84,7 @@ class environment(object):
 	
 	# variables for the tdom filter
 	self.applyTDOM = True
-	self.TDOMyears = 10
+	self.TDOMyears = 15
 	self.shadowSumBands = ['nir','swir1'];
 	self.zScoreThresh = -0.8
 	self.shadowSumThresh = 0.35;
@@ -102,10 +102,10 @@ class environment(object):
         
 	# apply a filter to filter for high values
 	self.filterPercentile = True
-	self.filterPercentileYears = 2
+	self.filterPercentileYears = 15
         # percentiles to filter for bad data
         self.lowPercentile = 1
-        self.highPercentile = 80
+        self.highPercentile = 70
 
         # whether to use imagecolletions
         self.useL4=True
@@ -121,10 +121,7 @@ class environment(object):
         self.maskSR = True
 
 	# get indicices 
-	self.getIndices = False
-	self.calcIndices = False
-	self.calcTasselcap = False
-	self.calcTCangles = False
+	self.calcIndices = True
 
 	# bands for tasselcap !maybe move
 	self.tcInputBands =  ee.List(['blue','green','red','nir','swir1','swir2'])
@@ -141,6 +138,10 @@ class environment(object):
 	#bands for stdev
 	self.stdDevBands = ee.List(['blue','green','red','nir','swir1','thermal','swir2']) #,'ND_nir_red','ND_nir_swir2','ND_green_swir1']);
 	self.stdDevExportsBands = ee.List(['blue_stdev','green_stdev','red_stdev','nir_stdev','swir1_stdev','thermal_stdev','swir2_stdev']) #,'ND_nir_red','ND_nir_swir2','ND_green_swir1']);
+	
+	# calculate stdev for indices
+	self.stdIndiceDevBands = ee.List(["ND_nir_swir2","ND_green_swir1","ND_nir_red"])
+	self.stdIndiceDevBandsExport = ee.List(["ND_nir_swir2_stdDev","ND_green_swir1_stdDev","ND_nir_red_stdDev"])
 
 	# apply defringe
         self.defringe = True
@@ -150,12 +151,15 @@ class environment(object):
         
         # user ID
         #self.userID = "users/servirmekong/assemblage/"
-        self.userID = "projects/servir-mekong/temp/07nghean_medoid_"
+        self.userID = "projects/servir-mekong/temp/31nghean_medoid_"
         #self.userID = "projects/servir-mekong/usgs_sr_composites/" + args.season + "/" 
         
 	#self.userID = "projects/servir-mekong/usgs_sr_composites/" + args.season + "/" 
 	
-
+	self.landsat4count = 0
+	self.landsat5count = 0
+	self.landsat7count = 0
+	self.landsat8count = 0
        
         # define the landsat bands			           
         self.sensorBandDictLandsatSR = ee.Dictionary({'L8' : ee.List([1,2,3,4,5,7,6,9,10,11]),
@@ -169,7 +173,7 @@ class environment(object):
 	self.calcMean = False
 
 	self.fillGaps = True
-	self.fillGapYears = 5
+	self.fillGapYears = 10
 
         # threshold for defringing landsat5 and 7
         self.fringeCountThreshold = 279
@@ -285,15 +289,24 @@ class SurfaceReflectance():
 	    self.percentile = self.fullCollection.reduce(ee.Reducer.percentile([self.env.lowPercentile,self.env.highPercentile])) 
 	    collection = collection.map(self.MaskPercentile) 
 
-	stdDevComposite = collection.select(self.env.stdDevBands).reduce(ee.Reducer.stdDev());
+	if self.env.calcIndices:
+	    indices = collection.map(self.addIndices)
+	    stdDevIndiceComposite = indices.select(self.env.stdIndiceDevBands).reduce(ee.Reducer.stdDev()).select(self.env.stdIndiceDevBandsExport)
 	
+	stdDevComposite = collection.select(self.env.stdDevBands).reduce(ee.Reducer.stdDev());
+	   
+	    
 	if self.env.calcMedoid:
 	    img = self.medoidMosaic(collection) 
 	
 	img = img.addBands(stdDevComposite)
 
+	if self.env.calcIndices:
+	    print "add stdev indice to composite"
+	   
+	    img = img.addBands(stdDevIndiceComposite)
+
 	#img = collection.median()
-	
 
 	if self.env.fillGaps: 
 	    gapfilter = img.select(["blue"]).gt(0).multiply(self.env.startYear)
@@ -302,31 +315,14 @@ class SurfaceReflectance():
 		img = self.unmaskYears(img,i)    
 	        img = self.unmaskFutureYears(img,i)    
 
-	if self.env.getIndices:
-	    img = self.getAllIndices(img)
 	
 	# rescale to save as int16
 	img = ee.Image(self.reScaleLandsat(img))
 	
+	print img.bandNames().getInfo()
 	# export image
 	self.ExportToAsset(img,self.env.outputName)
-	
-
-	
-    def getAllIndices(self,img):
-	""" get all indices"""
-
-	if self.env.calcIndices:
-	    img = self.addIndices(img)
-	
-	if self.env.calcTasselcap:
-	    img = self.getTasseledCap(img,self.env.tcInputBands )
-	
-	if self.env.calcTCangles:
-	    img = self.addTCAngles(img)
-	
-	return img
-             
+	         
 
     def GetLandsat(self,startDate,endDate,metadataCloudCoverMax):
         """Get the Landsat imagery"""  
@@ -336,19 +332,13 @@ class SurfaceReflectance():
         # boolean to merge Landsat; when true is merges with another collection
         merge = False
 	
-	self.landsat4count = 0
-	self.landsat5count = 0
-	self.landsat7count = 0
-	self.landsat8count = 0
-	
-
 	#print startDate, endDate, self.env.startJulian,self.env.endJulian	
         # landsat4 image collections 
         if self.env.useL4:   
             landsat4 =  ee.ImageCollection('LANDSAT/LT04/C01/T1_SR').filterDate(startDate,endDate).filterBounds(self.env.location)
 	    landsat4 = landsat4.filter(ee.Filter.calendarRange(self.env.startJulian,self.env.endJulian))     
 	    landsat4 = landsat4.filterMetadata('CLOUD_COVER','less_than',metadataCloudCoverMax)
-	    self.landsat4count  = str(landsat4.size()) 
+	    self.env.landsat4count += int(landsat4.size().getInfo())
 	    if landsat4.size().getInfo() > 0:
 		if self.env.defringe == True:
 		     landsat4 =  landsat4.map(self.DefringeLandsat)
@@ -364,7 +354,7 @@ class SurfaceReflectance():
             landsat5 =  ee.ImageCollection('LANDSAT/LT05/C01/T1_SR').filterDate(startDate,endDate).filterBounds(self.env.location)
 	    landsat5 = landsat5.filter(ee.Filter.calendarRange(self.env.startJulian,self.env.endJulian))
 	    landsat5 = landsat5.filterMetadata('CLOUD_COVER','less_than',metadataCloudCoverMax)
-	    self.landsat5count  = str(landsat5.size().getInfo()) 
+	    self.env.landsat5count += int(landsat5.size().getInfo())
 	    if landsat5.size().getInfo() > 0:
 		if self.env.defringe == True:
 		     landsat5 =  landsat5.map(self.DefringeLandsat)
@@ -389,7 +379,7 @@ class SurfaceReflectance():
 		l7slm = False
 	    if l7slm == True:
 		landsat7 = landsat7.filterMetadata('CLOUD_COVER','less_than',metadataCloudCoverMax)
-		self.landsat7count = str(landsat7.size().getInfo()) 
+		self.env.landsat7count += int(landsat7.size().getInfo())
 		if landsat7.size().getInfo() > 0:
 		    #if self.env.defringe == True:
 		    #	landsat7 =  landsat7.map(self.DefringeLandsat)            
@@ -407,7 +397,7 @@ class SurfaceReflectance():
             landsat8 =  ee.ImageCollection('LANDSAT/LC08/C01/T1_SR').filterDate(startDate,endDate).filterBounds(self.env.location)
 	    landsat8 = landsat8.filter(ee.Filter.calendarRange(self.env.startJulian,self.env.endJulian))
             landsat8 = landsat8.filterMetadata('CLOUD_COVER','less_than',metadataCloudCoverMax)
-	    self.landsat8count =str(landsat8.size().getInfo())
+	    self.env.landsat8count += int(landsat8.size().getInfo())
 	    if landsat8.size().getInfo() > 0:
 		if self.env.maskSR == True:
 		    landsat8 = landsat8.map(self.CloudMaskSRL8)    
@@ -424,6 +414,9 @@ class SurfaceReflectance():
 	         	    
 	    # return the image collection           
 	    return ee.ImageCollection(landsatCollection)
+	
+	else:
+	    return ee.ImageCollection([ee.Image(0)])
        
 
     def returnCollection(self,start,end):
@@ -480,7 +473,8 @@ class SurfaceReflectance():
 	thermalBand = ee.List(['thermal','thermal_stdDev'])
 	gapfillBand = ee.List(['gapfill'])
 	thermal = ee.Image(img).select(thermalBand).multiply(10)
-	gapfill = ee.Image(img).select('gapfill')
+	gapfill = ee.Image(img).select(gapfillBand)
+		
 	
 	otherBands = ee.Image(img).bandNames().removeAll(thermalBand)
 	otherBands = otherBands.removeAll(gapfillBand)
@@ -615,10 +609,10 @@ class SurfaceReflectance():
 				    'median':self.env.calcMedian,\
 				    'mean':self.env.calcMean,\
 				    'medoid':self.env.calcMedoid,\
-				    'count_landsat_4':self.landsat4count,\
-				    'count_landsat_5':self.landsat5count,\
-				    'count_landsat_7':self.landsat7count,\
-				    'count_landsat_8':self.landsat8count,\
+				    'count_landsat_4':str(self.env.landsat4count),\
+				    'count_landsat_5':str(self.env.landsat5count),\
+				    'count_landsat_7':str(self.env.landsat7count),\
+				    'count_landsat_8':str(self.env.landsat8count),\
 				    'cloud_threshold':self.env.metadataCloudCoverMax ,\
 				    'defringe':str(self.env.defringe),\
 				    'apply_usgs_cloud_filter': str(self.env.maskSR ),\
@@ -630,9 +624,7 @@ class SurfaceReflectance():
 				    'filter_percentile':str(self.env.filterPercentile),\
 				    'filter_percentile_years':self.env.filterPercentileYears,\
 				    'upper_percentile': self.env.highPercentile,\
-				    'calculate_indices':str(self.env.getIndices),\
-				    'calculate_tasselcap':str(self.env.calcTasselcap),\
-				    'calculate_tasselcap_angles':str(self.env.calcTCangles),\
+				    'calculate_indices':str(self.env.calcIndices),\
 				    'Gap_filling':str(self.env.fillGaps),\
 				    'years_of_gap_filling':self.env.fillGapYears,\
 				    'version':'1.0'}).clip(self.env.mekongRegion) 
@@ -647,70 +639,11 @@ class SurfaceReflectance():
     def addIndices(self,img):
 	""" Function to add common (and less common) spectral indices to an image.
 	    Includes the Normalized Difference Spectral Vector from (Angiuli and Trianni, 2014) """
-
-	#Add Normalized Difference Spectral Vector (NDSV)
-        img = img.addBands(img.normalizedDifference(['blue','green']).rename(['ND_blue_green']));
-	img = img.addBands(img.normalizedDifference(['blue','red']).rename(['ND_blue_red']));
-	img = img.addBands(img.normalizedDifference(['blue','nir']).rename(['ND_blue_nir']));
-	img = img.addBands(img.normalizedDifference(['blue','swir1']).rename(['ND_blue_swir1']));
-	img = img.addBands(img.normalizedDifference(['blue','swir2']).rename(['ND_blue_swir2']));
-
-	img = img.addBands(img.normalizedDifference(['green','red']).rename(['ND_green_red']));
-	img = img.addBands(img.normalizedDifference(['green','nir']).rename(['ND_green_nir']));  # NDWBI
+	    
 	img = img.addBands(img.normalizedDifference(['green','swir1']).rename(['ND_green_swir1']));  # NDSI, MNDWI
-	img = img.addBands(img.normalizedDifference(['green','swir2']).rename(['ND_green_swir2']));
-
-	img = img.addBands(img.normalizedDifference(['red','swir1']).rename(['ND_red_swir1']));
-	img = img.addBands(img.normalizedDifference(['red','swir2']).rename(['ND_red_swir2']));
-
 	img = img.addBands(img.normalizedDifference(['nir','red']).rename(['ND_nir_red']));  # NDVI
-	img = img.addBands(img.normalizedDifference(['nir','swir1']).rename(['ND_nir_swir1']));  # NDWI, LSWI, -NDBI
 	img = img.addBands(img.normalizedDifference(['nir','swir2']).rename(['ND_nir_swir2']));  # NBR, MNDVI
 
-	img = img.addBands(img.normalizedDifference(['swir1','swir2']).rename(['ND_swir1_swir2']));
-  
-	# Add ratios
-	img = img.addBands(img.select('swir1').divide(img.select('nir')).rename(['R_swir1_nir']));  # ratio 5/4
-	img = img.addBands(img.select('red').divide(img.select('swir1')).rename(['R_red_swir1']));  # ratio 3/5
-
-	#Add Enhanced Vegetation Index (EVI)
-	evi = img.expression(
-	    '2.5 * ((NIR - RED) / (NIR + 6 * RED - 7.5 * BLUE + 1))', {
-	      'NIR': img.select('nir'),
-	      'RED': img.select('red'),
-	      'BLUE': img.select('blue')
-	  }).float();
-	
-	img = img.addBands(evi.rename(['EVI']));
-	  
-	# Add Soil Adjust Vegetation Index (SAVI)
-	# using L = 0.5;
-	savi = img.expression(
-	    '(NIR - RED) * (1 + 0.5)/(NIR + RED + 0.5)', {
-	      'NIR': img.select('nir'),
-	      'RED': img.select('red')
-	  }).float();
-	img = img.addBands(savi.rename(['SAVI']));
-	  
-	# Add Index-Based Built-Up Index (IBI)
-	ibi_a = img.expression(
-	    '2*SWIR1/(SWIR1 + NIR)', {
-	      'SWIR1': img.select('swir1'),
-	      'NIR': img.select('nir')
-	    }).rename(['IBI_A']);
-	
-	ibi_b = img.expression(
-	    '(NIR/(NIR + RED)) + (GREEN/(GREEN + SWIR1))', {
-	      'NIR': img.select('nir'),
-	      'RED': img.select('red'),
-	      'GREEN': img.select('green'),
-	      'SWIR1': img.select('swir1')
-	    }).rename(['IBI_B']);
-	
-	ibi_a = ibi_a.addBands(ibi_b);
-	ibi = ibi_a.normalizedDifference(['IBI_A','IBI_B']);
-	img = img.addBands(ibi.rename(['IBI']));
-	  
 	return img;       
 
 
@@ -722,19 +655,28 @@ class SurfaceReflectance():
 	    startDate = ee.Date.fromYMD(self.env.startYear-year,1,1)
 	    endDate = ee.Date.fromYMD(self.env.endYear-year,12,31)    
 	    prev = self.GetLandsat(startDate,endDate,self.env.metadataCloudCoverMax)
-	    if prev.size().getInfo() > 0:
+	    if int(prev.size().getInfo()) > 1:
+
 		prev = self.maskShadows(prev.select(self.env.exportBands))
+		
 		if self.env.filterPercentile:
 		    prev = prev.map(self.MaskPercentile)
+		
 		stdDevComposite = prev.select(self.env.stdDevBands).reduce(ee.Reducer.stdDev());     
+
 		previmg = self.medoidMosaic(prev) 
 		previmg = previmg.mask(previmg.gt(0))
-		gapfilter = previmg.select(["blue"]).gt(0).multiply(self.env.startYear-year)
+		gapfilter = previmg.select(["blue"]).gt(0).multiply(int(self.env.startYear-year))
 		previmg = previmg.addBands(gapfilter.rename(['gapfill'])).addBands(stdDevComposite)
+		
+		if self.env.calcIndices:
+		    indices = prev.map(self.addIndices)
+		    stdDevIndiceComposite = indices.select(self.env.stdIndiceDevBands).reduce(ee.Reducer.stdDev()).select(self.env.stdIndiceDevBandsExport)
+		    previmg = previmg.addBands(stdDevIndiceComposite)
 		
 		img = img.unmask(previmg)
 	    
-	    return ee.Image(img)
+	return ee.Image(img)
 
     def unmaskFutureYears(self,img,year):
 	""" Function to unmask nodata withpixels future year """
@@ -743,17 +685,30 @@ class SurfaceReflectance():
 	startDate = ee.Date.fromYMD(self.env.startYear+year,1,1)
 	endDate = ee.Date.fromYMD(self.env.endYear+year,12,31)    
 	prev = self.GetLandsat(startDate,endDate,self.env.metadataCloudCoverMax)
-	if prev.size().getInfo() > 0:
+	if int(prev.size().getInfo()) > 1:
 	    prev = self.maskShadows(prev.select(self.env.exportBands))
 	    stdDevComposite = prev.select(self.env.stdDevBands).reduce(ee.Reducer.stdDev()); 
+
 	    if self.env.filterPercentile:
 		prev = prev.map(self.MaskPercentile) 
+
 	    previmg = self.medoidMosaic(prev) 	    
 	    previmg = previmg.mask(previmg.gt(0))
-	    gapfilter = previmg.select(["blue"]).gt(0).multiply(self.env.startYear-year)
+	    gapfilter = previmg.select(["blue"]).gt(0).multiply(int(self.env.startYear+year))
+
+    	    if self.env.calcIndices:
+		indices = prev.map(self.addIndices)
+		stdDevIndiceComposite = indices.select(self.env.stdIndiceDevBands).reduce(ee.Reducer.stdDev()).select(self.env.stdIndiceDevBandsExport)
+		previmg = previmg.addBands(stdDevIndiceComposite)
+
+	    
 	    previmg = previmg.addBands(gapfilter.rename(['gapfill'])).addBands(stdDevComposite)
 	    
+	    if self.env.calcIndices:
+		previmg.addBands(stdDevIndiceComposite)
+	    
 	    img = ee.Image(img).unmask(previmg)
+	
 	return ee.Image(img)
 
     def makeTiles(self):
@@ -764,7 +719,7 @@ class SurfaceReflectance():
 	ymax = 28.728774;
 
 	# number of rows and columns
-	n = 2;
+	n = 1;
 
 	for  i in range(0, n, 1):
 	    for j in range(0, n,1):	# x, y distance of one block
@@ -777,56 +732,9 @@ class SurfaceReflectance():
 		yt = ymin + (j*ys);
 		yb = ymin + (j+1)*ys;
 		geom =   [[xl, yt], [xl, yb], [xr, yb], [xr, yt]];
+		print geom
 
 		col = SurfaceReflectance().RunModel(geom,i,j)
-
-    def getTasseledCap(self,img,bands):
-	"""Function to compute the Tasseled Cap transformation and return an image"""
-
-        logging.info('get tasselcap for computed images')
-	
-	coefficients = ee.Array([
-	    [0.3037, 0.2793, 0.4743, 0.5585, 0.5082, 0.1863],
-	    [-0.2848, -0.2435, -0.5436, 0.7243, 0.0840, -0.1800],
-	    [0.1509, 0.1973, 0.3279, 0.3406, -0.7112, -0.4572],
-	    [-0.8242, 0.0849, 0.4392, -0.0580, 0.2012, -0.2768],
-	    [-0.3280, 0.0549, 0.1075, 0.1855, -0.4357, 0.8085],
-	    [0.1084, -0.9022, 0.4120, 0.0573, -0.0251, 0.0238]
-	  ]);
-	
-	# Make an Array Image, with a 1-D Array per pixel.
-	arrayImage1D = img.select(bands).toArray()
-	
-	# Make an Array Image with a 2-D Array per pixel, 6x1.
-	arrayImage2D = arrayImage1D.toArray(1)
-	
-	componentsImage = ee.Image(coefficients).matrixMultiply(arrayImage2D).arrayProject([0]).arrayFlatten([['brightness', 'greenness', 'wetness', 'fourth', 'fifth', 'sixth']]).float();
-  
-	# Get a multi-band image with TC-named bands.
-  	return img.addBands(componentsImage);
-
-
-    def addTCAngles(self,img):
-	""" Function to add Tasseled Cap angles and distances to an image.
-	    Assumes image has bands: 'brightness', 'greenness', and 'wetness'."""
-	
-	logging.info('add tasseled cap angles')
-	
-	# Select brightness, greenness, and wetness bands	
-	brightness = img.select('brightness');
-	greenness = img.select('greenness');
-	wetness = img.select('wetness');
-  
-	# Calculate Tasseled Cap angles and distances
-	tcAngleBG = brightness.atan2(greenness).divide(math.pi).rename(['tcAngleBG']);
-	tcAngleGW = greenness.atan2(wetness).divide(math.pi).rename(['tcAngleGW']);
-	tcAngleBW = brightness.atan2(wetness).divide(math.pi).rename(['tcAngleBW']);
-	tcDistBG = brightness.hypot(greenness).rename(['tcDistBG']);
-	tcDistGW = greenness.hypot(wetness).rename(['tcDistGW']);
-	tcDistBW = brightness.hypot(wetness).rename(['tcDistBW']);
-	
-	img = img.addBands(tcAngleBG).addBands(tcAngleGW).addBands(tcAngleBW).addBands(tcDistBG).addBands(tcDistGW).addBands(tcDistBW);
-	return img;
 
 	
     def medoidMosaic(self,collection):
@@ -852,20 +760,7 @@ class SurfaceReflectance():
 	medoid = ee.ImageCollection(medoid).reduce(ee.Reducer.min(bandNames.length().add(1))).select(bandNumbers,bandNames);
   
 	return medoid.addBands(thermal);
-
-
-
-class Primitives():
- 
-    def __init__(self):
-        """Initialize the Surfrace Reflectance app."""  
-        
-        # import the log library
-        import logging
-	
-	# get the environment
-        self.env = environment()    
-        
+     
    
 if __name__ == "__main__":
   
