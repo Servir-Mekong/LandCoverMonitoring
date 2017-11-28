@@ -274,6 +274,19 @@ class indices():
 		return img
 
 
+class TrainingData():
+	
+	def __init__(self):
+		"""Initialize the Surfrace Reflectance app."""  
+        
+		# import the log library
+		import logging
+	
+		# get the environment
+		self.env = environment()
+		
+		# get object with indices
+		self.indices = indices()    
 
 class primitives():
 	
@@ -336,7 +349,7 @@ class primitives():
 		composite = self.addTopography(composite);
 		
 		# combine all training bands
-		trainingBands = self.renameBands(dryhotCovariates,"dryhot") + self.renameBands(drycoolCovariates,"drycool") + self.renameBands(rainyCovariates,"rainy") + other
+		trainingBands = self.renameBands(dryhotCovariates,"dryhot") + self.renameBands(drycoolCovariates,"drycool") + self.renameBands(rainyCovariates,"rainy")
 		
 		# select training bands
 		composite = composite.select(trainingBands)
@@ -351,7 +364,7 @@ class primitives():
 										self.env.modelType);
 		# export the classification
 		print classification.bandNames().getInfo()
-		#self.ExportToAsset(classification)
+		self.ExportToAsset("urban_rice",classification)
 
 		
     
@@ -363,7 +376,7 @@ class primitives():
 		rainyCovariates = ["swir2","nir_stdDev","thermal","EVI","fifth","ND_red_swir2","ND_green_swir2","tcAngleGW"]
 		other = ['elevation']
 		
-		classNames = ee.List(['deciduous','evergreen','other']);;
+		classNames = ee.List(['deciduous','evergreen','other'])
 		
 		dryhot = self.ScaleBands(dryhot)
 		dryhot = self.indices.addAllTasselCapIndices(dryhot)
@@ -405,6 +418,8 @@ class primitives():
 										self.env.modelType);
 		# export the classification
 		print classification.bandNames().getInfo()
+		self.ExportToAsset("phenology",classification)
+
 
 	def mangroves(self,drycool,dryhot,rainy):
 		"""Calculate the mangrove primitive """
@@ -502,11 +517,11 @@ class primitives():
 										self.env.modelType);
 		# export the classification
 		print classification.bandNames().getInfo()
-		self.ExportToAsset(classification)
+		self.ExportToAsset("leaftype_",classification)
 		
 		print "needleleaf or broadleaf"
     
-	def grass_shrub_Tree(self,drycool,dryhot,rainy):
+	def grass_Shrub_Tree(self,drycool,dryhot,rainy):
 		print "needleleaf or broadleaf"
 		
 		dryhotCovariates = ["blue","greenness","ND_swir1_swir2","ND_blue_green","tcDistBW"]
@@ -556,6 +571,8 @@ class primitives():
 										self.env.modelType);
 		# export the classification
 		print classification.bandNames().getInfo()
+		
+		self.ExportToAsset("grass_",classification)
 
 
 	def surfaceWater(self):
@@ -644,10 +661,8 @@ class primitives():
 			if modelType == 'SVM':
 				classifier = ee.Classifier.svm().train(data_m,classFieldName,bands);
 			elif modelType == 'RF':
-				classifier = ee.Classifier.randomForest().train(data_m,classFieldName,bands);
-			# fix the classifier!!
-			#classifier = ee.Classifier.randomForest().train(data_m,classFieldName,bands);
-        
+				classifier = ee.Classifier.randomForest(1,0,1,1,False,m).train(data_m,classFieldName,bands);
+
     		# Run the classifier on the image
 			classification = image.classify(classifier,'prediction');
     
@@ -740,10 +755,10 @@ class primitives():
 		return newNames
 
 				
-	def ExportToAsset(self,img):  
+	def ExportToAsset(self,name,img):  
 		"""export to asset """
 		
-		outputName = self.env.userID + self.env.assetName + self.env.timeString
+		outputName = self.env.userID + name + self.env.assetName + self.env.timeString
 		logging.info('export image to asset: ' + str(outputName)) 
 		#startDate = ee.Date.fromYMD(self.env.startYear,1,1)
 		#endDate = ee.Date.fromYMD(self.env.endYear,12,31)    
@@ -781,9 +796,13 @@ if __name__ == "__main__":
 	ee.Initialize()
     
 	# import the images
-	drycool = ee.Image("projects/servir-mekong/temp/11nghean_medoid_dryhot2000_2000Medoid11")
-	dryhot = drycool
-	rainy = drycool
-	
-	primitives().leaf_Type(drycool,dryhot,rainy)
+	dryhot = ee.Image("projects/servir-mekong/temp/11nghean_medoid_dryhot2000_2000Medoid00")
+	drycool = ee.Image("projects/servir-mekong/temp/11nghean_medoid_drycool1999_2000Medoid00")
+	rainy = ee.Image("projects/servir-mekong/temp/11nghean_medoid_rainy2000_2000Medoid00")
+
+	#primitives().leaf_Type(drycool,dryhot,rainy)
+	#primitives().mangroves(drycool,dryhot,rainy)
+	primitives().grass_Shrub_Tree(drycool,dryhot,rainy)
+	primitives().phenology(drycool,dryhot,rainy)
+	primitives().urban_builtup_cropland_rice_barren(drycool,dryhot,rainy)
 

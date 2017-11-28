@@ -104,8 +104,8 @@ class environment(object):
 	self.filterPercentile = True
 	self.filterPercentileYears = 15
         # percentiles to filter for bad data
-        self.lowPercentile = 1
-        self.highPercentile = 70
+        self.lowPercentile = 2
+        self.highPercentile = 66
 
         # whether to use imagecolletions
         self.useL4=True
@@ -151,10 +151,10 @@ class environment(object):
         
         # user ID
         #self.userID = "users/servirmekong/assemblage/"
-        self.userID = "projects/servir-mekong/temp/31nghean_medoid_"
+        #self.userID = "projects/servir-mekong/temp/11nghean_medoid_"
         #self.userID = "projects/servir-mekong/usgs_sr_composites/" + args.season + "/" 
         
-	#self.userID = "projects/servir-mekong/usgs_sr_composites/" + args.season + "/" 
+	self.userID = "projects/servir-mekong/usgs_sr_composites/" + args.season + "/" 
 	
 	self.landsat4count = 0
 	self.landsat5count = 0
@@ -247,7 +247,7 @@ class SurfaceReflectance():
 	print "starting .. " + self.env.outputName
 	
 	self.env.location = ee.Geometry.Polygon(geo) #ee.Geometry.Polygon(self.env.NgheAn)
-	#self.env.location = ee.Geometry.Polygon(self.env.NgheAn)
+	#self.env.location = ee.Geometry.Polygon([[104.260,22.553],[104.298,20.997],[106.556,20.997],[106.446,22.527],[104.260,22.553]])
 
         logging.info('starting the model the model')
         	
@@ -309,7 +309,7 @@ class SurfaceReflectance():
 	#img = collection.median()
 
 	if self.env.fillGaps: 
-	    gapfilter = img.select(["blue"]).gt(0).multiply(self.env.startYear)
+	    gapfilter = img.select(["blue"]).gt(0).multiply(self.env.startYear).int16()
 	    img = img.addBands(gapfilter.rename(['gapfill']))
 	    for i in range(1,self.env.fillGapYears,1):
 		img = self.unmaskYears(img,i)    
@@ -476,12 +476,10 @@ class SurfaceReflectance():
 	gapfill = ee.Image(img).select(gapfillBand)
 		
 	
-	otherBands = ee.Image(img).bandNames().removeAll(thermalBand)
-	otherBands = otherBands.removeAll(gapfillBand)
+	otherBands = ee.Image(img).bandNames().removeAll(thermalBand).removeAll(gapfillBand)
         scaled = ee.Image(img).select(otherBands).divide(0.0001)
 	
 	image = ee.Image(scaled.addBands(thermal).addBands(gapfill)).int16()
-	#image = ee.Image(scaled.addBands(gapfill)).int16()
         logging.info('return scaled image')
         
 	return image.copyProperties(img)
@@ -666,7 +664,8 @@ class SurfaceReflectance():
 
 		previmg = self.medoidMosaic(prev) 
 		previmg = previmg.mask(previmg.gt(0))
-		gapfilter = previmg.select(["blue"]).gt(0).multiply(int(self.env.startYear-year))
+		print "added start minux year ", self.env.startYear-year
+		gapfilter = ee.Image(previmg.select(["blue"]).gt(0)).multiply((self.env.startYear-year))
 		previmg = previmg.addBands(gapfilter.rename(['gapfill'])).addBands(stdDevComposite)
 		
 		if self.env.calcIndices:
@@ -694,7 +693,8 @@ class SurfaceReflectance():
 
 	    previmg = self.medoidMosaic(prev) 	    
 	    previmg = previmg.mask(previmg.gt(0))
-	    gapfilter = previmg.select(["blue"]).gt(0).multiply(int(self.env.startYear+year))
+	    print "added start year ", self.env.startYear+year
+	    gapfilter = ee.Image(previmg.select(["blue"]).gt(0)).multiply((self.env.startYear+year))
 
     	    if self.env.calcIndices:
 		indices = prev.map(self.addIndices)
