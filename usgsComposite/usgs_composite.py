@@ -84,7 +84,7 @@ class environment(object):
 	
 	# variables for the tdom filter
 	self.applyTDOM = True
-	self.TDOMyears = 15
+	self.TDOMyears = 25
 	self.shadowSumBands = ['nir','swir1'];
 	self.zScoreThresh = -0.8
 	self.shadowSumThresh = 0.35;
@@ -94,7 +94,7 @@ class environment(object):
 	self.outputName = args.season + str(self.startYear) + "_" + str(self.endYear)
 
         # variable to filter cloud threshold
-        self.metadataCloudCoverMax = 70
+        self.metadataCloudCoverMax = 40
         
         # threshold for landsatCloudScore
         self.cloudThreshold = 10
@@ -105,7 +105,7 @@ class environment(object):
 	self.filterPercentileYears = 15
         # percentiles to filter for bad data
         self.lowPercentile = 2
-        self.highPercentile = 66
+        self.highPercentile = 80
 
         # whether to use imagecolletions
         self.useL4=True
@@ -151,7 +151,7 @@ class environment(object):
         
         # user ID
         #self.userID = "users/servirmekong/assemblage/"
-        #self.userID = "projects/servir-mekong/temp/11nghean_medoid_"
+        #self.userID = "projects/servir-mekong/temp/nghean_medoid_"
         #self.userID = "projects/servir-mekong/usgs_sr_composites/" + args.season + "/" 
         
 	self.userID = "projects/servir-mekong/usgs_sr_composites/" + args.season + "/" 
@@ -173,7 +173,7 @@ class environment(object):
 	self.calcMean = False
 
 	self.fillGaps = True
-	self.fillGapYears = 10
+	self.fillGapYears = 20
 
         # threshold for defringing landsat5 and 7
         self.fringeCountThreshold = 279
@@ -242,10 +242,6 @@ class SurfaceReflectance():
     def RunModel(self,geo,x,y):
         """Run the SR model"""  
         
-	self.env.outputName = self.env.outputName +"Medoid" +str(x) + str(y)
-	
-	print "starting .. " + self.env.outputName
-	
 	self.env.location = ee.Geometry.Polygon(geo) #ee.Geometry.Polygon(self.env.NgheAn)
 	#self.env.location = ee.Geometry.Polygon([[104.260,22.553],[104.298,20.997],[106.556,20.997],[106.446,22.527],[104.260,22.553]])
 
@@ -271,7 +267,7 @@ class SurfaceReflectance():
 	
 	if self.env.applyTDOM:
 	    # years before and after
-	    y = int(self.env.TDOMyears / 2)
+	    y = int(self.env.TDOMyears)
 	    start = ee.Date.fromYMD(self.env.startYear-y,1,1)
 	    end = ee.Date.fromYMD(self.env.startYear+y,1,1)
 	    self.fullCollection = self.returnCollection(start,end).select(self.env.exportBands)
@@ -298,6 +294,11 @@ class SurfaceReflectance():
 	    
 	if self.env.calcMedoid:
 	    img = self.medoidMosaic(collection) 
+	    compositeStyle = "Medoid"
+	
+	if self.env.calcMedian:
+	    img = collection.median()
+	    compositeStyle = "Median"
 	
 	img = img.addBands(stdDevComposite)
 
@@ -306,10 +307,14 @@ class SurfaceReflectance():
 	   
 	    img = img.addBands(stdDevIndiceComposite)
 
+	self.env.outputName = self.env.outputName + compositeStyle
+	
+	print "starting .. " + self.env.outputName
+	
 	#img = collection.median()
 
 	if self.env.fillGaps: 
-	    gapfilter = img.select(["blue"]).gt(0).multiply(self.env.startYear).int16()
+	    gapfilter = ee.Image(self.env.startYear).updateMask(img.select("blue").mask())
 	    img = img.addBands(gapfilter.rename(['gapfill']))
 	    for i in range(1,self.env.fillGapYears,1):
 		img = self.unmaskYears(img,i)    
@@ -615,6 +620,7 @@ class SurfaceReflectance():
 				    'defringe':str(self.env.defringe),\
 				    'apply_usgs_cloud_filter': str(self.env.maskSR ),\
 				    'applyTDOM':self.env.applyTDOM,\
+				    'TDOMyears':str(self.env.TDOMyears),\
 				    'pixel_size':self.env.pixSize,\
 				    'zScoreThresh':self.env.zScoreThresh,\
 				    'shadowSumThresh':self.env.shadowSumThresh,\
@@ -623,7 +629,7 @@ class SurfaceReflectance():
 				    'filter_percentile_years':self.env.filterPercentileYears,\
 				    'upper_percentile': self.env.highPercentile,\
 				    'calculate_indices':str(self.env.calcIndices),\
-				    'Gap_filling':str(self.env.fillGaps),\
+				    'gap_filling':str(self.env.fillGaps),\
 				    'years_of_gap_filling':self.env.fillGapYears,\
 				    'version':'1.0'}).clip(self.env.mekongRegion) 
 
@@ -662,10 +668,15 @@ class SurfaceReflectance():
 		
 		stdDevComposite = prev.select(self.env.stdDevBands).reduce(ee.Reducer.stdDev());     
 
-		previmg = self.medoidMosaic(prev) 
-		previmg = previmg.mask(previmg.gt(0))
+		if self.env.calcMedoid:
+		    previmg = self.medoidMosaic(prev) 
+		
+		if self.env.calcMedian:
+		    previmg = prev.median() 	
+		
+		previmg = previmg.mask(previmg.select("blue").gt(0))
 		print "added start minux year ", self.env.startYear-year
-		gapfilter = ee.Image(previmg.select(["blue"]).gt(0)).multiply((self.env.startYear-year))
+		gapfilter = ee.Image(self.env.startYear-year).updateMask(previmg.select("blue").mask())
 		previmg = previmg.addBands(gapfilter.rename(['gapfill'])).addBands(stdDevComposite)
 		
 		if self.env.calcIndices:
@@ -691,10 +702,16 @@ class SurfaceReflectance():
 	    if self.env.filterPercentile:
 		prev = prev.map(self.MaskPercentile) 
 
-	    previmg = self.medoidMosaic(prev) 	    
-	    previmg = previmg.mask(previmg.gt(0))
+	    if self.env.calcMedoid:
+		previmg = self.medoidMosaic(prev) 	    
+	    
+	    if self.env.calcMedian:
+		previmg = prev.median() 	    
+	    
+	    
+	    previmg = previmg.mask(previmg.select("blue").gt(0))
 	    print "added start year ", self.env.startYear+year
-	    gapfilter = ee.Image(previmg.select(["blue"]).gt(0)).multiply((self.env.startYear+year))
+	    gapfilter = ee.Image(self.env.startYear+year).updateMask(previmg.select("blue").mask())
 
     	    if self.env.calcIndices:
 		indices = prev.map(self.addIndices)

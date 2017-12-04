@@ -60,11 +60,12 @@ class environment(object):
 		self.studyArea = mekongRegion;
 
 		#Load training data from Fusion Table (remove or rename columns 'system:index' and '.geo')
-		self.barrenCropBuiltupRice_training = ee.FeatureCollection('ft:1Yq_dM-zSchbJGfF1sHDl7JSYOkF0duhWxjm-VDY6');
-		self.grassShrubTree_training = ee.FeatureCollection('ft:1SPIfoYx5q8p3_c12gbGu8aI6EiBf9f79rVc6b_0d');
-		self.leafType_training = ee.FeatureCollection('ft:1KXZQEmSS20IOouYSn3urxWr53w45kfsmLzl0e5_c');
-		self.mangrove_training = ee.FeatureCollection('ft:1LIRp1cw2uWWmXKBNUzz6yqwT1ZQ5h4Nri9Lygqq2');
-		self.phenology_training = ee.FeatureCollection('ft:1QatttVeXWGIdTTLoyFWTBEpcDHJRuQHJF2YAYgCI');
+		self.barrenCropBuiltupRice_training = ee.FeatureCollection("ft:1B7JscqIb9L8QjTjnWEfr2UvXQJqwfe1hKegnY-zs")
+		self.barrenCropBuiltupRice_training =   ee.FeatureCollection("ft:1nahZF9LcjxObfnJmHz6HUG1URocUZrToi6FgeeCT")
+		#self.grassShrubTree_training = ee.FeatureCollection('ft:1SPIfoYx5q8p3_c12gbGu8aI6EiBf9f79rVc6b_0d');
+		#self.leafType_training = ee.FeatureCollection('ft:1KXZQEmSS20IOouYSn3urxWr53w45kfsmLzl0e5_c');
+		#self.mangrove_training = ee.FeatureCollection('ft:1LIRp1cw2uWWmXKBNUzz6yqwT1ZQ5h4Nri9Lygqq2');
+		#self.phenology_training = ee.FeatureCollection('ft:1QatttVeXWGIdTTLoyFWTBEpcDHJRuQHJF2YAYgCI');
 
 		
 
@@ -274,7 +275,7 @@ class indices():
 		return img
 
 
-class TrainingData():
+class trainingData():
 	
 	def __init__(self):
 		"""Initialize the Surfrace Reflectance app."""  
@@ -286,7 +287,27 @@ class TrainingData():
 		self.env = environment()
 		
 		# get object with indices
-		self.indices = indices()    
+		self.indices = indices() 
+		
+	def createTrainingSample(self,trainData,composite):
+		
+		date = ee.Date.fromYMD(2015,1,1)
+		trainingData_yr = ee.FeatureCollection(trainData) #ee.FeatureCollection(trainData.filter(ee.Filter.eq('Year',date.millis()))); 
+		
+		print trainingData_yr.size().getInfo()
+		
+		training_yr = composite.sampleRegions(trainingData_yr, [self.env.classFieldName], self.env.pixSize)		
+												  
+		# Aggregate training data from each year into one collection
+		training = ee.FeatureCollection(training_yr) #.flatten();
+		task = ee.batch.Export.table.toDrive(training,"trainingDatamerge");
+		
+		
+		task.start() 
+		
+		
+		print training.first().getInfo()
+		return training
 
 class primitives():
 	
@@ -300,7 +321,9 @@ class primitives():
 		self.env = environment()
 		
 		# get object with indices
-		self.indices = indices()    
+		self.indices = indices() 
+		
+		self.train = trainingData()   
 	
 	def importData(self):
 		print "import data"
@@ -316,7 +339,7 @@ class primitives():
 
 		return img
 		
-	def urban_builtup_cropland_rice_barren(self,drycool,dryhot,rainy):
+	def builtup_cropland_rice_barren(self,drycool,dryhot,rainy):
 		"""Calculate the urban, builtup cropland rice and barren primitives """
 
 		dryhotCovariates = ["fifth","thermal","ND_green_red","ND_nir_swir1","tcDistBW","tcAngleGW"]
@@ -353,10 +376,14 @@ class primitives():
 		
 		# select training bands
 		composite = composite.select(trainingBands)
+		print trainingDataSet.first().getInfo()
+
+		trainingData = self.env.barrenCropBuiltupRice_training #self.train.createTrainingSample(self.env.barrenCropBuiltupRice_training,composite ) #trainingDataSet #
+		#trainingData = ee.FeatureCollection(self.train.createTrainingSample(self.env.barrenCropBuiltupRice_training,composite ))
 		
 		# run the model		
 		classification = self.getBaggedModel(composite, \
-										self.env.barrenCropBuiltupRice_training, \
+										trainingData, \
 										composite.bandNames(), \
 										self.env.nModels, \
 										self.env.classFieldName, \
@@ -364,6 +391,8 @@ class primitives():
 										self.env.modelType);
 		# export the classification
 		print classification.bandNames().getInfo()
+		
+	    
 		self.ExportToAsset("urban_rice",classification)
 
 		
@@ -445,7 +474,7 @@ class primitives():
 		
 		# Get the JRC water 
 		water = ee.Image('JRC/GSW1_0/GlobalSurfaceWater').mask(ee.Image(1));
-		distCoast = ee.Image('projects/servir-mekong/Primitives/DistancetoCoast_1k').float().rename('distCoast');
+		distCoast = ee.Image('projects/servir-mekong/Primitives/DistancetoCoast_1k').float().rename(['distCoast']);
 		
 		# rename the bands
 		dryhot = self.renameImageBands(dryhot,"dryhot") 
@@ -603,10 +632,10 @@ class primitives():
 		
 		# From aspect (a), calculate eastness (sin a), northness (cos a)
 		deg2rad = ee.Number(math.pi).divide(180);
-		aspect = topo.select('aspect');
+		aspect = topo.select(['aspect']);
 		aspect_rad = aspect.multiply(deg2rad);
-		eastness = aspect_rad.sin().rename('eastness').float();
-		northness = aspect_rad.cos().rename('northness').float();
+		eastness = aspect_rad.sin().rename(['eastness']).float();
+		northness = aspect_rad.cos().rename(['northness']).float();
 		
 		# Add topography bands to image
 		topo = topo.select('elevation','slope','aspect').addBands(eastness).addBands(northness);
@@ -689,7 +718,7 @@ class primitives():
 		classProbabilitiesStack = self.newCollectionToImage(classProbabilities).rename(classNames);
       
 		# Also return the mode or majority classification
-		classification = classification.mode().rename('Mode');
+		classification = classification.mode().rename(['Mode']);
 		classification_image = classification.addBands(classProbabilitiesStack);
   
 		return classification_image;
@@ -796,13 +825,32 @@ if __name__ == "__main__":
 	ee.Initialize()
     
 	# import the images
-	dryhot = ee.Image("projects/servir-mekong/temp/11nghean_medoid_dryhot2000_2000Medoid00")
-	drycool = ee.Image("projects/servir-mekong/temp/11nghean_medoid_drycool1999_2000Medoid00")
-	rainy = ee.Image("projects/servir-mekong/temp/11nghean_medoid_rainy2000_2000Medoid00")
+	dryhot = ee.Image("projects/servir-mekong/usgs_sr_composites/dryhot/dryhot2015_2015Medoid00")
+	drycool = ee.Image("projects/servir-mekong/usgs_sr_composites/drycool/drycool2014_2015Medoid00")
+	rainy = ee.Image("projects/servir-mekong/usgs_sr_composites/rainy/rainy2015_2015Medoid00")
+	
+	
+	import csv
+	infile =  csv.DictReader(open('/home/ate/Downloads/trainingData.csv'))
+
+
+	myList = []
+	for row in infile:
+		myList.append(row)
+
+	def createFeatures(item):
+		return ee.Feature(None,item)
+		
+
+	trainingDataSet = ee.FeatureCollection(ee.List(myList).map(createFeatures))
+
+	for sub in myList:
+		for key in sub:
+			sub[key] = float(sub[key])
 
 	#primitives().leaf_Type(drycool,dryhot,rainy)
 	#primitives().mangroves(drycool,dryhot,rainy)
-	primitives().grass_Shrub_Tree(drycool,dryhot,rainy)
-	primitives().phenology(drycool,dryhot,rainy)
-	primitives().urban_builtup_cropland_rice_barren(drycool,dryhot,rainy)
+	#primitives().grass_Shrub_Tree(drycool,dryhot,rainy)
+	#primitives().phenology(drycool,dryhot,rainy)
+	primitives().builtup_cropland_rice_barren(drycool,dryhot,rainy)
 
