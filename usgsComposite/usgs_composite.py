@@ -111,7 +111,7 @@ class environment(object):
         self.useL4=True
         self.useL5=True
         self.useL7=True
-	self.useL7scanline = False
+	self.useL7scanline = True
         self.useL8=True
 
 	# On May 31, 2003 the Scan Line Corrector (SLC) in the ETM+ instrument failed
@@ -168,8 +168,8 @@ class environment(object):
                                                       'L4' : ee.List([0,1,2,3,4,5,6,7,9,10])})
 
 	# just placeholders for now
-	self.calcMedoid = True
-	self.calcMedian = False
+	self.calcMedoid = False
+	self.calcMedian = True
 	self.calcMean = False
 
 	self.fillGaps = True
@@ -317,6 +317,7 @@ class SurfaceReflectance():
 	    gapfilter = ee.Image(self.env.startYear).updateMask(img.select("blue").mask())
 	    img = img.addBands(gapfilter.rename(['gapfill']))
 	    for i in range(1,self.env.fillGapYears,1):
+		print i, self.env.fillGapYears
 		img = self.unmaskYears(img,i)    
 	        img = self.unmaskFutureYears(img,i)    
 
@@ -386,8 +387,8 @@ class SurfaceReflectance():
 		landsat7 = landsat7.filterMetadata('CLOUD_COVER','less_than',metadataCloudCoverMax)
 		self.env.landsat7count += int(landsat7.size().getInfo())
 		if landsat7.size().getInfo() > 0:
-		    #if self.env.defringe == True:
-		    #	landsat7 =  landsat7.map(self.DefringeLandsat)            
+		    if self.env.defringe == True:
+		    	landsat7 =  landsat7.map(self.DefringeLandsat)            
 		    if self.env.maskSR == True:
 			landsat7 = landsat7.map(self.CloudMaskSR)
 			landsat7 = landsat7.map(self.maskHaze)  
@@ -630,6 +631,7 @@ class SurfaceReflectance():
 				    'upper_percentile': self.env.highPercentile,\
 				    'calculate_indices':str(self.env.calcIndices),\
 				    'gap_filling':str(self.env.fillGaps),\
+				    'landsat_7_scanline':str(self.env.useL7scanline),\
 				    'years_of_gap_filling':self.env.fillGapYears,\
 				    'version':'1.0'}).clip(self.env.mekongRegion) 
 
@@ -692,39 +694,40 @@ class SurfaceReflectance():
 	""" Function to unmask nodata withpixels future year """
 	
 	print "unmasking for year " + str(self.env.startYear+year) 
-	startDate = ee.Date.fromYMD(self.env.startYear+year,1,1)
-	endDate = ee.Date.fromYMD(self.env.endYear+year,12,31)    
-	prev = self.GetLandsat(startDate,endDate,self.env.metadataCloudCoverMax)
-	if int(prev.size().getInfo()) > 1:
-	    prev = self.maskShadows(prev.select(self.env.exportBands))
-	    stdDevComposite = prev.select(self.env.stdDevBands).reduce(ee.Reducer.stdDev()); 
+	if self.env.startYear+year < 2018:
+	    startDate = ee.Date.fromYMD(self.env.startYear+year,1,1)
+	    endDate = ee.Date.fromYMD(self.env.endYear+year,12,31)    
+	    prev = self.GetLandsat(startDate,endDate,self.env.metadataCloudCoverMax)
+	    if int(prev.size().getInfo()) > 1:
+		prev = self.maskShadows(prev.select(self.env.exportBands))
+		stdDevComposite = prev.select(self.env.stdDevBands).reduce(ee.Reducer.stdDev()); 
 
-	    if self.env.filterPercentile:
-		prev = prev.map(self.MaskPercentile) 
+		if self.env.filterPercentile:
+		    prev = prev.map(self.MaskPercentile) 
 
-	    if self.env.calcMedoid:
-		previmg = self.medoidMosaic(prev) 	    
-	    
-	    if self.env.calcMedian:
-		previmg = prev.median() 	    
-	    
-	    
-	    previmg = previmg.mask(previmg.select("blue").gt(0))
-	    print "added start year ", self.env.startYear+year
-	    gapfilter = ee.Image(self.env.startYear+year).updateMask(previmg.select("blue").mask())
+		if self.env.calcMedoid:
+		    previmg = self.medoidMosaic(prev) 	    
+		
+		if self.env.calcMedian:
+		    previmg = prev.median() 	    
+		
+		
+		previmg = previmg.mask(previmg.select("blue").gt(0))
+		print "added start year ", self.env.startYear+year
+		gapfilter = ee.Image(self.env.startYear+year).updateMask(previmg.select("blue").mask())
 
-    	    if self.env.calcIndices:
-		indices = prev.map(self.addIndices)
-		stdDevIndiceComposite = indices.select(self.env.stdIndiceDevBands).reduce(ee.Reducer.stdDev()).select(self.env.stdIndiceDevBandsExport)
-		previmg = previmg.addBands(stdDevIndiceComposite)
+		if self.env.calcIndices:
+		    indices = prev.map(self.addIndices)
+		    stdDevIndiceComposite = indices.select(self.env.stdIndiceDevBands).reduce(ee.Reducer.stdDev()).select(self.env.stdIndiceDevBandsExport)
+		    previmg = previmg.addBands(stdDevIndiceComposite)
 
-	    
-	    previmg = previmg.addBands(gapfilter.rename(['gapfill'])).addBands(stdDevComposite)
-	    
-	    if self.env.calcIndices:
-		previmg.addBands(stdDevIndiceComposite)
-	    
-	    img = ee.Image(img).unmask(previmg)
+		
+		previmg = previmg.addBands(gapfilter.rename(['gapfill'])).addBands(stdDevComposite)
+		
+		if self.env.calcIndices:
+		    previmg.addBands(stdDevIndiceComposite)
+		
+		img = ee.Image(img).unmask(previmg)
 	
 	return ee.Image(img)
 
@@ -791,7 +794,7 @@ if __name__ == "__main__":
     parser.add_argument('--season','-s', choices=['drycool','dryhot','rainy'],type=str,
                         help="Season to create composite for, these align with SERVIR-Mekong's seasonal composite times")
 
-    parser.add_argument('--user','-u', type=str, default="servir-mekong",choices=['servir-mekong','servirmekong',"ate","biplov","quyen"],
+    parser.add_argument('--user','-u', type=str, default="servir-mekong",choices=['servir-mekong','servirmekong',"ate","biplov","quyen","atesig"],
 			help="specify user account to run task")
 
     args = parser.parse_args() # get arguments  
