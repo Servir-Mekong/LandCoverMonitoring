@@ -102,7 +102,7 @@ class environment(object):
         
 	# apply a filter to filter for high values
 	self.filterPercentile = True
-	self.filterPercentileYears = 15
+	self.filterPercentileYears = 25
         # percentiles to filter for bad data
         self.lowPercentile = 2
         self.highPercentile = 80
@@ -111,7 +111,7 @@ class environment(object):
         self.useL4=True
         self.useL5=True
         self.useL7=True
-	self.useL7scanline = True
+	self.useL7scanline = False
         self.useL8=True
 
 	# On May 31, 2003 the Scan Line Corrector (SLC) in the ETM+ instrument failed
@@ -154,7 +154,7 @@ class environment(object):
         #self.userID = "projects/servir-mekong/temp/nghean_medoid_"
         #self.userID = "projects/servir-mekong/usgs_sr_composites/" + args.season + "/" 
         
-	self.userID = "projects/servir-mekong/usgs_sr_composites/" + args.season + "/" 
+	self.userID = "projects/servir-mekong/usgs_sr_composites/" + args.season + "/SC_" 
 	
 	self.landsat4count = 0
 	self.landsat5count = 0
@@ -168,12 +168,12 @@ class environment(object):
                                                       'L4' : ee.List([0,1,2,3,4,5,6,7,9,10])})
 
 	# just placeholders for now
-	self.calcMedoid = False
-	self.calcMedian = True
+	self.calcMedoid = True
+	self.calcMedian = False
 	self.calcMean = False
 
 	self.fillGaps = True
-	self.fillGapYears = 20
+	self.fillGapYears = 25
 
         # threshold for defringing landsat5 and 7
         self.fringeCountThreshold = 279
@@ -253,12 +253,17 @@ class SurfaceReflectance():
         startDate = ee.Date.fromYMD(self.env.startYear,1,1).advance(self.env.startJulian,'day')
         endDate = ee.Date.fromYMD(self.env.endYear,1,1).advance(self.env.endJulian-1,'day')
         
+	print str(startDate.getInfo())
+	print str(endDate.getInfo())
+	
 	logging.info('startDate = ' + str(startDate.getInfo()))
 	logging.info('endDatDate = ' + str(endDate.getInfo()))
 	logging.info('Cloudcover filter = ' + str(self.env.metadataCloudCoverMax))	
 	
         # get the images
         collection = self.GetLandsat(startDate,endDate,self.env.metadataCloudCoverMax).select(self.env.exportBands)
+	
+	count = ee.Image(collection.select(['blue']).count().rename('count')).int16()
 
 	collection = collection.map(self.maskClouds)   
 	
@@ -310,8 +315,6 @@ class SurfaceReflectance():
 	self.env.outputName = self.env.outputName + compositeStyle
 	
 	print "starting .. " + self.env.outputName
-	
-	#img = collection.median()
 
 	if self.env.fillGaps: 
 	    gapfilter = ee.Image(self.env.startYear).updateMask(img.select("blue").mask())
@@ -323,9 +326,9 @@ class SurfaceReflectance():
 
 	
 	# rescale to save as int16
-	img = ee.Image(self.reScaleLandsat(img))
+	img = ee.Image(self.reScaleLandsat(img)).addBands(count)
 	
-	print img.bandNames().getInfo()
+	#print img.bandNames().getInfo()
 	# export image
 	self.ExportToAsset(img,self.env.outputName)
 	         
@@ -656,8 +659,9 @@ class SurfaceReflectance():
     def unmaskYears(self,img,year):
 	""" Function to unmask nodata withpixels previous year """
 	
-	print "unmasking for year " + str(self.env.startYear-year) 
+	
 	if self.env.startYear-year > 1984:
+		print "unmasking for year " + str(self.env.startYear-year) 
 	    startDate = ee.Date.fromYMD(self.env.startYear-year,1,1)
 	    endDate = ee.Date.fromYMD(self.env.endYear-year,12,31)    
 	    prev = self.GetLandsat(startDate,endDate,self.env.metadataCloudCoverMax)
@@ -693,8 +697,9 @@ class SurfaceReflectance():
     def unmaskFutureYears(self,img,year):
 	""" Function to unmask nodata withpixels future year """
 	
-	print "unmasking for year " + str(self.env.startYear+year) 
+	
 	if self.env.startYear+year < 2018:
+		print "unmasking for year " + str(self.env.startYear+year) 
 	    startDate = ee.Date.fromYMD(self.env.startYear+year,1,1)
 	    endDate = ee.Date.fromYMD(self.env.endYear+year,12,31)    
 	    prev = self.GetLandsat(startDate,endDate,self.env.metadataCloudCoverMax)
@@ -794,7 +799,7 @@ if __name__ == "__main__":
     parser.add_argument('--season','-s', choices=['drycool','dryhot','rainy'],type=str,
                         help="Season to create composite for, these align with SERVIR-Mekong's seasonal composite times")
 
-    parser.add_argument('--user','-u', type=str, default="servir-mekong",choices=['servir-mekong','servirmekong',"ate","biplov","quyen","atesig"],
+    parser.add_argument('--user','-u', type=str, default="servir-mekong",choices=['servir-mekong','servirmekong',"ate","biplov","quyen","atesig","adpc","KSA"],
 			help="specify user account to run task")
 
     args = parser.parse_args() # get arguments  
