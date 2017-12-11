@@ -661,7 +661,7 @@ class SurfaceReflectance():
 	
 	
 	if self.env.startYear-year > 1984:
-		print "unmasking for year " + str(self.env.startYear-year) 
+	    print "unmasking for year " + str(self.env.startYear-year) 
 	    startDate = ee.Date.fromYMD(self.env.startYear-year,1,1)
 	    endDate = ee.Date.fromYMD(self.env.endYear-year,12,31)    
 	    prev = self.GetLandsat(startDate,endDate,self.env.metadataCloudCoverMax)
@@ -699,7 +699,7 @@ class SurfaceReflectance():
 	
 	
 	if self.env.startYear+year < 2018:
-		print "unmasking for year " + str(self.env.startYear+year) 
+	    print "unmasking for year " + str(self.env.startYear+year) 
 	    startDate = ee.Date.fromYMD(self.env.startYear+year,1,1)
 	    endDate = ee.Date.fromYMD(self.env.endYear+year,12,31)    
 	    prev = self.GetLandsat(startDate,endDate,self.env.metadataCloudCoverMax)
