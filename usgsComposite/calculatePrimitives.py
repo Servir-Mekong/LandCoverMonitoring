@@ -53,6 +53,8 @@ class environment(object):
 		self.pixSize = 30
 		
 		self.nModels = 10
+		
+		self.year = 0
 
 		# Load Mekong study region (Myanmar, Thailand, Laos, Vietnam, Cambodia)
 		mekongBuffer = ee.FeatureCollection('ft:1LEGeqwlBCAlN61ie5ol24NdUDqB1MgpFR_sJNWQJ');
@@ -204,6 +206,7 @@ class indices():
 
 	def ND_nir_red(self,img):
 		img = img.addBands(img.normalizedDifference(['nir','red']).rename(['ND_nir_red']));  # NDVI
+		return img
 	
 	def ND_nir_swir1(self,img):
 		img = img.addBands(img.normalizedDifference(['nir','swir1']).rename(['ND_nir_swir1']));  # NDWI, LSWI, -NDBI
@@ -275,40 +278,6 @@ class indices():
 		return img
 
 
-class trainingData():
-	
-	def __init__(self):
-		"""Initialize the Surfrace Reflectance app."""  
-        
-		# import the log library
-		import logging
-	
-		# get the environment
-		self.env = environment()
-		
-		# get object with indices
-		self.indices = indices() 
-		
-	def createTrainingSample(self,trainData,composite):
-		
-		date = ee.Date.fromYMD(2015,1,1)
-		trainingData_yr = ee.FeatureCollection(trainData) #ee.FeatureCollection(trainData.filter(ee.Filter.eq('Year',date.millis()))); 
-		
-		print trainingData_yr.size().getInfo()
-		
-		training_yr = composite.sampleRegions(trainingData_yr, [self.env.classFieldName], self.env.pixSize)		
-												  
-		# Aggregate training data from each year into one collection
-		training = ee.FeatureCollection(training_yr) #.flatten();
-		task = ee.batch.Export.table.toDrive(training,"trainingDatamerge");
-		
-		
-		task.start() 
-		
-		
-		print training.first().getInfo()
-		return training
-
 class primitives():
 	
 	def __init__(self):
@@ -322,8 +291,6 @@ class primitives():
 		
 		# get object with indices
 		self.indices = indices() 
-		
-		self.train = trainingData()   
 	
 	def importData(self):
 		print "import data"
@@ -339,30 +306,28 @@ class primitives():
 
 		return img
 		
-	def builtup_cropland_rice_barren(self,drycool,dryhot,rainy):
-		"""Calculate the urban, builtup cropland rice and barren primitives """
+	def createPrimitive(self,drycool,dryhot,rainy,trainingDataSet,y):
+		""" calculate the primitive """ 
 
-		dryhotCovariates = ["fifth","thermal","ND_green_red","ND_nir_swir1","tcDistBW","tcAngleGW"]
-		drycoolCovariates = ["fourth","fifth","wetness","blue","thermal","swir1_stdDev","R_red_swir1","ND_blue_green","ND_swir1_swir2","ND_nir_swir2_stdDev","tcAngleGW"]
-		rainyCovariates = ["fifth","thermal","swir1_stdDev","nir_stdDev","R_red_swir1","ND_nir_swir2","ND_swir1_swir2","ND_green_swir1_stdDev","ND_nir_swir2_stdDev","ND_nir_red_stdDev","tcAngleGW"]
-		classNames = ee.List(['barren','crop','imperv','other','rice']);
-		
+		covariates = ["ND_blue_green","ND_blue_red","ND_blue_nir","ND_blue_swir1","ND_blue_swir2","ND_green_red","ND_green_nir","ND_green_swir1","ND_green_swir2","ND_red_swir1","ND_red_swir2","ND_nir_red","ND_nir_swir1","ND_nir_swir2","ND_swir1_swir2","R_swir1_nir","R_red_swir1","EVI","SAVI","IBI"]
+
 		dryhot = self.ScaleBands(dryhot)
 		dryhot = self.indices.addAllTasselCapIndices(dryhot)
-		dryhot = self.getIndices(dryhot,dryhotCovariates)
+		dryhot = self.getIndices(dryhot,covariates)
 	
 		drycool = self.ScaleBands(drycool)
 		drycool = self.indices.addAllTasselCapIndices(drycool)
-		drycool = self.getIndices(drycool,drycoolCovariates)
+		drycool = self.getIndices(drycool,covariates)
 	
 		rainy = self.ScaleBands(rainy)
 		rainy = self.indices.addAllTasselCapIndices(rainy)
-		rainy = self.getIndices(rainy,rainyCovariates)
+		rainy = self.getIndices(rainy,covariates)
 		
 		# Get the JRC water 
 		water = ee.Image('JRC/GSW1_0/GlobalSurfaceWater').mask(ee.Image(1));
 		
 		# rename the bands
+
 		dryhot = self.renameImageBands(dryhot,"dryhot") 
 		drycool = self.renameImageBands(drycool,"drycool")
 		rainy = self.renameImageBands(rainy,"rainy") 
@@ -370,265 +335,40 @@ class primitives():
 		# construct the composites
 		composite = drycool.addBands(dryhot).addBands(rainy).addBands(water);
 		composite = self.addTopography(composite);
+		composite = self.addJRC(composite)
+		composite = self.addNightLights(composite,y)
 		
-		# combine all training bands
-		trainingBands = self.renameBands(dryhotCovariates,"dryhot") + self.renameBands(drycoolCovariates,"drycool") + self.renameBands(rainyCovariates,"rainy")
+		selectedBands = ["elevation","stable_lights","drycool_green","rainy_tcAngleGW","rainy_blue","slope","rainy_tcAngleBW","rainy_ND_blue_nir","rainy_ND_green_red","rainy_R_red_swir1","rainy_ND_green_swir2","drycool_ND_blue_nir","drycool_R_red_swir1","drycool_ND_green_red","dryhot_tcDistBG","drycool_tcAngleGW","rainy_tcDistBG","drycool_R_swir1_nir","dryhot_ND_red_swir1","rainy_nir","drycool_tcDistBG","dryhot_nir","drycool_nir","dryhot_R_red_swir1","drycool_tcAngleBW","rainy_ND_blue_green","dryhot_tcAngleGW","drycool_ND_blue_swir2","dryhot_ND_blue_nir"]
 		
-		# select training bands
-		composite = composite.select(trainingBands)
-		print trainingDataSet.first().getInfo()
+		composite = composite.select(selectedBands)
+		
+		print composite.bandNames().getInfo()
+		
+		classNames = ee.List(['crop','imperv','barren','rice',"other"]);
 
-		trainingData = self.env.barrenCropBuiltupRice_training #self.train.createTrainingSample(self.env.barrenCropBuiltupRice_training,composite ) #trainingDataSet #
-		#trainingData = ee.FeatureCollection(self.train.createTrainingSample(self.env.barrenCropBuiltupRice_training,composite ))
-		
 		# run the model		
 		classification = self.getBaggedModel(composite, \
-										trainingData, \
+										trainingDataSet, \
 										composite.bandNames(), \
 										self.env.nModels, \
 										self.env.classFieldName, \
 										classNames, \
 										self.env.modelType);
 		# export the classification
-		print classification.bandNames().getInfo()
-		
-	    
-		self.ExportToAsset("urban_rice",classification)
 
+		self.ExportToAsset("urban_rice_barrren",classification)
 		
-    
-	def phenology(self,drycool,dryhot,rainy):
-		"""Calculate the broadleaf, deciduous, needleleaf primitives """
-		
-		dryhotCovariates = ["blue","nir","thermal","fourth","fifth","ND_blue_green","ND_green_red","ND_blue_nir","sixth","tcAngleGW","tcDistBG","tcDistGW"]
-		drycoolCovariates = ["blue","thermal","fourth","ND_blue_red","ND_green_red","tcAngleGW"]
-		rainyCovariates = ["swir2","nir_stdDev","thermal","EVI","fifth","ND_red_swir2","ND_green_swir2","tcAngleGW"]
-		other = ['elevation']
-		
-		classNames = ee.List(['deciduous','evergreen','other'])
-		
-		dryhot = self.ScaleBands(dryhot)
-		dryhot = self.indices.addAllTasselCapIndices(dryhot)
-		dryhot = self.getIndices(dryhot,dryhotCovariates)
-	
-		drycool = self.ScaleBands(drycool)
-		drycool = self.indices.addAllTasselCapIndices(drycool)
-		drycool = self.getIndices(drycool,drycoolCovariates)
-	
-		rainy = self.ScaleBands(rainy)
-		rainy = self.indices.addAllTasselCapIndices(rainy)
-		rainy = self.getIndices(rainy,rainyCovariates)
-		
-		# Get the JRC water 
-		water = ee.Image('JRC/GSW1_0/GlobalSurfaceWater').mask(ee.Image(1));
-		
-		# rename the bands
-		dryhot = self.renameImageBands(dryhot,"dryhot") 
-		drycool = self.renameImageBands(drycool,"drycool")
-		rainy = self.renameImageBands(rainy,"rainy") 
-		
-		# construct the composites
-		composite = drycool.addBands(dryhot).addBands(rainy).addBands(water);
-		composite = self.addTopography(composite);
-		
-		# combine all training bands
-		trainingBands = self.renameBands(dryhotCovariates,"dryhot") + self.renameBands(drycoolCovariates,"drycool") + self.renameBands(rainyCovariates,"rainy")  + other
-		
-		# select training bands
-		composite = composite.select(trainingBands)
-		
-		# run the model		
-		classification = self.getBaggedModel(composite, \
-										self.env.phenology_training, \
-										composite.bandNames(), \
-										self.env.nModels, \
-										self.env.classFieldName, \
-										classNames, \
-										self.env.modelType);
-		# export the classification
-		print classification.bandNames().getInfo()
-		self.ExportToAsset("phenology",classification)
-
-
-	def mangroves(self,drycool,dryhot,rainy):
-		"""Calculate the mangrove primitive """
-		
-		dryhotCovariates = ["ND_nir_swir1","blue","thermal","ND_swir1_swir2","TcAngleGW","Greenness","ND_red_swir1","R_red_swir1"]
-		drycoolCovariates = ["Nir","Wetness","TcAngleGW","ND_swir1_swir2","R_red_swir1"]
-		rainyCovariates = ["nir","ND_nir_swir2","ND_swir1_swir2","TcAngleGW","R_red_swir1","swir1_stdDev","ND_green_swir1_stdDev"]
-		other = ["distCoast","elevation"]
-		
-		classNames = ee.List(['mangrove','other']);
-
-		dryhot = self.ScaleBands(dryhot)
-		dryhot = self.indices.addAllTasselCapIndices(dryhot)
-		dryhot = self.getIndices(dryhot,dryhotCovariates)
-	
-		drycool = self.ScaleBands(drycool)
-		drycool = self.indices.addAllTasselCapIndices(drycool)
-		drycool = self.getIndices(drycool,drycoolCovariates)
-	
-		rainy = self.ScaleBands(rainy)
-		rainy = self.indices.addAllTasselCapIndices(rainy)
-		rainy = self.getIndices(rainy,rainyCovariates)
-		
-		# Get the JRC water 
-		water = ee.Image('JRC/GSW1_0/GlobalSurfaceWater').mask(ee.Image(1));
-		distCoast = ee.Image('projects/servir-mekong/Primitives/DistancetoCoast_1k').float().rename(['distCoast']);
-		
-		# rename the bands
-		dryhot = self.renameImageBands(dryhot,"dryhot") 
-		drycool = self.renameImageBands(drycool,"drycool")
-		rainy = self.renameImageBands(rainy,"rainy") 
-		
-		# construct the composites
-		composite = drycool.addBands(dryhot).addBands(rainy).addbands(distCoast);
-		composite = self.addTopography(composite);
-		
-		# combine all training bands
-		trainingBands = self.renameBands(dryhotCovariates,"dryhot") + self.renameBands(drycoolCovariates,"drycool") + self.renameBands(rainyCovariates,"rainy")  + other
-		
-		# select training bands
-		composite = composite.select(trainingBands)
-		
-		# run the model		
-		classification = self.getBaggedModel(composite, \
-										self.env.leafType_training, \
-										composite.bandNames(), \
-										self.env.nModels, \
-										self.env.classFieldName, \
-										classNames, \
-										self.env.modelType);
-		# export the classification
-		print classification.bandNames().getInfo()
-
-	def leaf_Type(self,drycool,dryhot,rainy):
-		dryhotCovariates = ["blue","nir","thermal","fourth","fifth","ND_blue_green","ND_green_red","ND_blue_nir","sixth","tcAngleGW","tcDistBG","tcDistGW"]
-		drycoolCovariates = ["blue","thermal","fourth","ND_blue_red","ND_green_red","tcAngleGW"]
-		rainyCovariates = ["swir2","nir_stdDev","thermal","EVI","fifth","ND_red_swir2","ND_green_swir2","tcAngleGW"]
-		other = ['elevation']
-		
-		classNames = ee.List(['broadleaf','deciduous','needleleaf','other']);
-		
-		dryhot = self.ScaleBands(dryhot)
-		dryhot = self.indices.addAllTasselCapIndices(dryhot)
-		dryhot = self.getIndices(dryhot,dryhotCovariates)
-	
-		drycool = self.ScaleBands(drycool)
-		drycool = self.indices.addAllTasselCapIndices(drycool)
-		drycool = self.getIndices(drycool,drycoolCovariates)
-	
-		rainy = self.ScaleBands(rainy)
-		rainy = self.indices.addAllTasselCapIndices(rainy)
-		rainy = self.getIndices(rainy,rainyCovariates)
-		
-		# rename the bands
-		dryhot = self.renameImageBands(dryhot,"dryhot") 
-		drycool = self.renameImageBands(drycool,"drycool")
-		rainy = self.renameImageBands(rainy,"rainy")
-	
-		composite = drycool.addBands(dryhot).addBands(rainy)
-		composite = self.addTopography(composite);
-		
-		# combine all training bands
-		trainingBands = self.renameBands(dryhotCovariates,"dryhot") + self.renameBands(drycoolCovariates,"drycool") + self.renameBands(rainyCovariates,"rainy")  + other
-		
-		# select training bands
-		composite = composite.select(trainingBands)
-		
-		# run the model		
-		classification = self.getBaggedModel(composite, \
-										self.env.leafType_training, \
-										composite.bandNames(), \
-										self.env.nModels, \
-										self.env.classFieldName, \
-										classNames, \
-										self.env.modelType);
-		# export the classification
-		print classification.bandNames().getInfo()
-		self.ExportToAsset("leaftype_",classification)
-		
-		print "needleleaf or broadleaf"
-    
-	def grass_Shrub_Tree(self,drycool,dryhot,rainy):
-		print "needleleaf or broadleaf"
-		
-		dryhotCovariates = ["blue","greenness","ND_swir1_swir2","ND_blue_green","tcDistBW"]
-		drycoolCovariates = ["blue","sixth","ND_swir1_swir2","ND_blue_green","R_swir1_nir","tcAngleGW","thermal"]
-		rainyCovariates = ["sixth","blue","ND_swir1_swir2","ND_nir_swir2","ND_blue_green","R_red_swir1"]
-		other = ["slope","elevation"]
-		
-		classNames = ee.List(['grass','other','shrub','tree']);
-
-		dryhot = self.ScaleBands(dryhot)
-		dryhot = self.indices.addAllTasselCapIndices(dryhot)
-		dryhot = self.getIndices(dryhot,dryhotCovariates)
-	
-		drycool = self.ScaleBands(drycool)
-		drycool = self.indices.addAllTasselCapIndices(drycool)
-		drycool = self.getIndices(drycool,drycoolCovariates)
-	
-		rainy = self.ScaleBands(rainy)
-		rainy = self.indices.addAllTasselCapIndices(rainy)
-		rainy = self.getIndices(rainy,rainyCovariates)
-		
-		# Get the JRC water 
-		water = ee.Image('JRC/GSW1_0/GlobalSurfaceWater').mask(ee.Image(1));
-		
-		# rename the bands
-		dryhot = self.renameImageBands(dryhot,"dryhot") 
-		drycool = self.renameImageBands(drycool,"drycool")
-		rainy = self.renameImageBands(rainy,"rainy") 
-		
-		# construct the composites
-		composite = drycool.addBands(dryhot).addBands(rainy).addBands(water);
-		composite = self.addTopography(composite);
-		
-		# combine all training bands
-		trainingBands = self.renameBands(dryhotCovariates,"dryhot") + self.renameBands(drycoolCovariates,"drycool") + self.renameBands(rainyCovariates,"rainy")  + other
-		
-		# select training bands
-		composite = composite.select(trainingBands)
-		
-		# run the model		
-		classification = self.getBaggedModel(composite, \
-										self.env.grassShrubTree_training, \
-										composite.bandNames(), \
-										self.env.nModels, \
-										self.env.classFieldName, \
-										classNames, \
-										self.env.modelType);
-		# export the classification
-		print classification.bandNames().getInfo()
-		
-		self.ExportToAsset("grass_",classification)
-
-
-	def surfaceWater(self):
-		print "water"
-		dryhotCovariates = []
-		drycoolCovariates = []
-		rainyCovariates = []
-
-	def snow_ice(self):
-		print "snow and ice"
-		dryhotCovariates = []
-		drycoolCovariates = []
-		rainyCovariates = []
-
 	def addTopography(self,img):
 		"""  Function to add 30m SRTM elevation and derived slope, aspect, eastness, and 
 		northness to an image. Elevation is in meters, slope is between 0 and 90 deg,
 		aspect is between 0 and 359 deg. Eastness and northness are unitless and are
 		between -1 and 1. """
-		
-		region = ee.Geometry.Polygon(img.geometry().getInfo()['coordinates'])
+
 		# Import SRTM elevation data
 		elevation = ee.Image("USGS/SRTMGL1_003");
 		
 		# Calculate slope, aspect, and hillshade
 		topo = ee.Algorithms.Terrain(elevation);
-		topo = topo.clip(region);
 		
 		# From aspect (a), calculate eastness (sin a), northness (cos a)
 		deg2rad = ee.Number(math.pi).divide(180);
@@ -638,9 +378,41 @@ class primitives():
 		northness = aspect_rad.cos().rename(['northness']).float();
 		
 		# Add topography bands to image
-		topo = topo.select('elevation','slope','aspect').addBands(eastness).addBands(northness);
+		topo = topo.select(['elevation','slope','aspect']).addBands(eastness).addBands(northness);
 		img = img.addBands(topo);
 		return img;
+
+	def addJRC(self,img):
+		""" Function to add JRC Water layers: 'occurrence', 'change_abs', 
+			'change_norm', 'seasonality','transition', 'max_extent' """
+		
+		jrcImage = ee.Image("JRC/GSW1_0/GlobalSurfaceWater")
+		
+		img = img.addBands(jrcImage.select(['occurrence']).rename(['occurrence']))
+		img = img.addBands(jrcImage.select(['change_abs']).rename(['change_abs']))
+		img = img.addBands(jrcImage.select(['change_norm']).rename(['change_norm']))
+		img = img.addBands(jrcImage.select(['seasonality']).rename(['seasonality']))
+		img = img.addBands(jrcImage.select(['transition']).rename(['transition']))
+		img = img.addBands(jrcImage.select(['max_extent']).rename(['max_extent']))
+		
+		return img
+		
+	def addNightLights(self,img,y):
+		""" Function to add nighlights to the composite' """
+		
+		startDate = ee.Date.fromYMD(y-2, 1, 1)
+		endDate = ee.Date.fromYMD(y-2, 12, 31)
+		
+		if y < 2012:
+		
+			nightLights = ee.Image(ee.ImageCollection("NOAA/DMSP-OLS/NIGHTTIME_LIGHTS").filterDate(startDate,endDate).mean())	
+			img = img.addBands(nightLights.select(["stable_lights"]).rename(["stable_lights"]))
+		
+		if y >= 2012:
+			nightLights = ee.Image(ee.ImageCollection("NOAA/VIIRS/DNB/MONTHLY_V1/VCMCFG").filterDate(startDate,endDate).mean())	
+			img = img.addBands(nightLights.select(["avg_rad"]).rename(["stable_lights"]))
+		
+		return img
 
 	def getBaggedModel(self,image,data,bands,nModels,classFieldName,classNames,modelType):
 		""" Function to perform bagged classification on an image, using either Random
@@ -817,7 +589,8 @@ if __name__ == "__main__":
   
 	# user account to run task on
 	userName = args.user
-	year = args.year
+	year = int(args.year)
+	#self.env.year = year
 
 	# create a new file in ~/.config/earthengine/credentials with token of user
 	addUserCredentials(userName)
@@ -825,32 +598,10 @@ if __name__ == "__main__":
 	ee.Initialize()
     
 	# import the images
-	dryhot = ee.Image("projects/servir-mekong/usgs_sr_composites/dryhot/dryhot2015_2015Medoid00")
-	drycool = ee.Image("projects/servir-mekong/usgs_sr_composites/drycool/drycool2014_2015Medoid00")
-	rainy = ee.Image("projects/servir-mekong/usgs_sr_composites/rainy/rainy2015_2015Medoid00")
+	dryhot = ee.Image("projects/servir-mekong/usgs_sr_composites/drycool/SC_drycool2015_2016Medoid")
+	drycool = ee.Image("projects/servir-mekong/usgs_sr_composites/dryhot/SC_dryhot2016_2016Medoid")
+	rainy = ee.Image("projects/servir-mekong/usgs_sr_composites/rainy/SC_rainy2016_2016Medoid")
 	
-	
-	import csv
-	infile =  csv.DictReader(open('/home/ate/Downloads/trainingData.csv'))
-
-
-	myList = []
-	for row in infile:
-		myList.append(row)
-
-	def createFeatures(item):
-		return ee.Feature(None,item)
-		
-
-	trainingDataSet = ee.FeatureCollection(ee.List(myList).map(createFeatures))
-
-	for sub in myList:
-		for key in sub:
-			sub[key] = float(sub[key])
-
-	#primitives().leaf_Type(drycool,dryhot,rainy)
-	#primitives().mangroves(drycool,dryhot,rainy)
-	#primitives().grass_Shrub_Tree(drycool,dryhot,rainy)
-	#primitives().phenology(drycool,dryhot,rainy)
-	primitives().builtup_cropland_rice_barren(drycool,dryhot,rainy)
+	trainingDataSet = ee.FeatureCollection("ft:19qZ8fInJI8IZ32N2HcPUpQqWrzEpEmpk8LLxSBrC")
+	primitives().createPrimitive(drycool,dryhot,rainy,trainingDataSet,year)
 

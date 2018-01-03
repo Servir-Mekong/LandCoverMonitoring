@@ -466,11 +466,15 @@ class primitives():
 		
 		startDate = ee.Date.fromYMD(y-2, 1, 1)
 		endDate = ee.Date.fromYMD(y-2, 12, 31)
-		nightLights = ee.Image(ee.ImageCollection("NOAA/DMSP-OLS/NIGHTTIME_LIGHTS").filterDate(startDate,endDate).mean())
 		
-		print nightLights.bandNames().getInfo()
-				
-		img = img.addBands(nightLights.select(["stable_lights"]).rename(["stable_lights"]))
+		if y < 2012:
+		
+			nightLights = ee.Image(ee.ImageCollection("NOAA/DMSP-OLS/NIGHTTIME_LIGHTS").filterDate(startDate,endDate).mean())	
+			img = img.addBands(nightLights.select(["stable_lights"]).rename(["stable_lights"]))
+		
+		if y >= 2012:
+			nightLights = ee.Image(ee.ImageCollection("NOAA/VIIRS/DNB/MONTHLY_V1/VCMCFG").filterDate(startDate,endDate).mean())	
+			img = img.addBands(nightLights.select(["avg_rad"]).rename(["stable_lights"]))
 		
 		return img
 		
@@ -574,7 +578,7 @@ if __name__ == "__main__":
     
     # need a function to select unique years from ft here
         
-	calibrationSet = ee.FeatureCollection("users/servirmekong/calibration/calibrationset")
+	calibrationSet = ee.FeatureCollection("users/servirmekong/calibration/validationSet")
 
 	#years = [2009,2010,2011,2014,2015,2016]
 	years = [2015]
@@ -584,9 +588,9 @@ if __name__ == "__main__":
 		
 		print y
 		## import the images
-		dryhot = ee.Image("projects/servir-mekong/usgs_sr_composites/dryhot/SC_dryhot" + str(y) + "_" + str(y) +"Median")
-		drycool = ee.Image("projects/servir-mekong/usgs_sr_composites/drycool/SC_drycool" + str(y-1) + "_" + str(y) + "Median")
-		rainy = ee.Image("projects/servir-mekong/usgs_sr_composites/rainy/SC_rainy" + str(y) + "_" + str(y) + "Median")
+		dryhot = ee.Image("projects/servir-mekong/usgs_sr_composites/dryhot/SC_dryhot" + str(y) + "_" + str(y) +"Medoid")
+		drycool = ee.Image("projects/servir-mekong/usgs_sr_composites/drycool/SC_drycool" + str(y-1) + "_" + str(y) + "Medoid")
+		rainy = ee.Image("projects/servir-mekong/usgs_sr_composites/rainy/SC_rainy" + str(y) + "_" + str(y) + "Medoid")
 
 		composite = primitives().createIndices(drycool,dryhot,rainy,y)
 		##print composite.bandNames().getInfo()
@@ -601,7 +605,7 @@ if __name__ == "__main__":
 	
 		counter+=1
 	
-	task = ee.batch.Export.table.toDrive(reference,"training_crop_barren_rice_imperv_other_median_calibration");
+	task = ee.batch.Export.table.toDrive(reference,"training_crop_barren_rice_imperv_other_medoid_validation2015");
 			
 	task.start() 
 		
