@@ -168,8 +168,8 @@ class environment(object):
                                                       'L4' : ee.List([0,1,2,3,4,5,6,7,9,10])})
 
 	# just placeholders for now
-	self.calcMedoid = True
-	self.calcMedian = False
+	self.calcMedoid = False
+	self.calcMedian = True
 	self.calcMean = False
 
 	self.fillGaps = True
@@ -261,7 +261,7 @@ class SurfaceReflectance():
 	logging.info('Cloudcover filter = ' + str(self.env.metadataCloudCoverMax))	
 	
         # get the images
-        collection = self.GetLandsat(startDate,endDate,self.env.metadataCloudCoverMax).select(self.env.exportBands)
+        collection = self.GetLandsat(startDate,endDate,self.env.metadataCloudCoverMax,0).select(self.env.exportBands)
 	
 	count = ee.Image(collection.select(['blue']).count().rename('count')).int16()
 
@@ -333,13 +333,15 @@ class SurfaceReflectance():
 	self.ExportToAsset(img,self.env.outputName)
 	         
 
-    def GetLandsat(self,startDate,endDate,metadataCloudCoverMax):
+    def GetLandsat(self,startDate,endDate,metadataCloudCoverMax,year):
         """Get the Landsat imagery"""  
         
         logging.info('getting landsat images')
             
         # boolean to merge Landsat; when true is merges with another collection
         merge = False
+
+        print startDate.getInfo(), endDate.getInfo(),self.env.startYear
 	
 	#print startDate, endDate, self.env.startJulian,self.env.endJulian	
         # landsat4 image collections 
@@ -382,9 +384,11 @@ class SurfaceReflectance():
             landsat7 =  ee.ImageCollection('LANDSAT/LE07/C01/T1_SR').filterDate(startDate,endDate).filterBounds(self.env.location)
 	    landsat7 = landsat7.filter(ee.Filter.calendarRange(self.env.startJulian,self.env.endJulian))
 	    if self.env.startYear == 2003 or self.env.endYear == 2003:
+		if self.env.startJulian > 151:
+			l7slm = False 
 		if self.env.useL7scanline == False:
 		    landsat7 = landsat7.filterDate(startDate,self.env.l7Failed)
-	    if self.env.startYear > 2003 and self.env.useL7scanline == False:
+	    if self.env.startYear+year > 2003 and self.env.useL7scanline == False:
 		l7slm = False
 	    if l7slm == True:
 		landsat7 = landsat7.filterMetadata('CLOUD_COVER','less_than',metadataCloudCoverMax)
@@ -438,7 +442,7 @@ class SurfaceReflectance():
         cloudCoverMax = self.env.metadataCloudCoverMax 
         
         # get the images
-        collection = self.GetLandsat(start,end,cloudCoverMax)
+        collection = self.GetLandsat(start,end,cloudCoverMax,0)
         collection = collection.map(self.maskClouds)   
 	
 	return collection
@@ -664,7 +668,7 @@ class SurfaceReflectance():
 	    print "unmasking for year " + str(self.env.startYear-year) 
 	    startDate = ee.Date.fromYMD(self.env.startYear-year,1,1)
 	    endDate = ee.Date.fromYMD(self.env.endYear-year,12,31)    
-	    prev = self.GetLandsat(startDate,endDate,self.env.metadataCloudCoverMax)
+	    prev = self.GetLandsat(startDate,endDate,self.env.metadataCloudCoverMax,year)
 	    if int(prev.size().getInfo()) > 1:
 
 		prev = self.maskShadows(prev.select(self.env.exportBands))
@@ -702,7 +706,7 @@ class SurfaceReflectance():
 	    print "unmasking for year " + str(self.env.startYear+year) 
 	    startDate = ee.Date.fromYMD(self.env.startYear+year,1,1)
 	    endDate = ee.Date.fromYMD(self.env.endYear+year,12,31)    
-	    prev = self.GetLandsat(startDate,endDate,self.env.metadataCloudCoverMax)
+	    prev = self.GetLandsat(startDate,endDate,self.env.metadataCloudCoverMax,year)
 	    if int(prev.size().getInfo()) > 1:
 		prev = self.maskShadows(prev.select(self.env.exportBands))
 		stdDevComposite = prev.select(self.env.stdDevBands).reduce(ee.Reducer.stdDev()); 
