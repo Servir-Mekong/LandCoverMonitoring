@@ -393,7 +393,9 @@ class primitives():
 		composite = drycool.addBands(dryhot).addBands(rainy).addBands(water);
 		composite = self.addTopography(composite);
 		composite = self.addJRC(composite)
-		composite = self.addNightLights(composite,y)
+		
+		# disable for now
+		#composite = self.addNightLights(composite,y)
 		print composite.bandNames().getInfo()
 		
 		allIndices = ["ND_blue_green","ND_blue_red","ND_blue_nir","ND_blue_swir1", \
@@ -414,7 +416,7 @@ class primitives():
 		nightLights = ['stable_lights']
 		
 		# combine all training bands
-		trainingBands = self.renameBands(allIndices,"dryhot") + self.renameBands(allIndices,"drycool") + self.renameBands(allIndices,"rainy") + elevationBands + jrcBands + nightLights
+		trainingBands = self.renameBands(allIndices,"dryhot") + self.renameBands(allIndices,"drycool") + self.renameBands(allIndices,"rainy") + elevationBands + jrcBands #+ nightLights
 		
 		# select training bands
 		composite = composite.select(trainingBands)
@@ -578,7 +580,7 @@ if __name__ == "__main__":
     
     # need a function to select unique years from ft here
         
-	calibrationSet = ee.FeatureCollection("users/servirmekong/calibration/validationSet")
+	calibrationSet = ee.FeatureCollection("users/servirmekong/calibration/FINAL_calibration")
 
 	#years = [2009,2010,2011,2014,2015,2016]
 	years = [2015]
@@ -605,7 +607,7 @@ if __name__ == "__main__":
 	
 		counter+=1
 	
-	task = ee.batch.Export.table.toDrive(reference,"training_crop_barren_rice_imperv_other_medoid_validation2015");
+	task = ee.batch.Export.table.toDrive(reference,"training_crop_barren_rice_imperv_other_medoid_FinalCalibration2015");
 			
 	task.start() 
 		

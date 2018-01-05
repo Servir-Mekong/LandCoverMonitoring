@@ -52,7 +52,7 @@ class environment(object):
 		self.userID = "projects/servir-mekong/temp/"
 		self.pixSize = 30
 		
-		self.nModels = 10
+		self.nModels = 50
 		
 		self.year = 0
 
@@ -338,7 +338,7 @@ class primitives():
 		composite = self.addJRC(composite)
 		composite = self.addNightLights(composite,y)
 		
-		selectedBands = ["elevation","stable_lights","drycool_green","rainy_tcAngleGW","rainy_blue","slope","rainy_tcAngleBW","rainy_ND_blue_nir","rainy_ND_green_red","rainy_R_red_swir1","rainy_ND_green_swir2","drycool_ND_blue_nir","drycool_R_red_swir1","drycool_ND_green_red","dryhot_tcDistBG","drycool_tcAngleGW","rainy_tcDistBG","drycool_R_swir1_nir","dryhot_ND_red_swir1","rainy_nir","drycool_tcDistBG","dryhot_nir","drycool_nir","dryhot_R_red_swir1","drycool_tcAngleBW","rainy_ND_blue_green","dryhot_tcAngleGW","drycool_ND_blue_swir2","dryhot_ND_blue_nir"]
+		selectedBands = ["elevation","drycool_ND_swir1_swir2","rainy_blue","rainy_tcAngleGW","dryhot_green","drycool_blue","slope","dryhot_tcDistBG","rainy_tcAngleBW","dryhot_ND_blue_swir1","rainy_tcDistBG","rainy_ND_blue_nir","drycool_tcDistBG","drycool_tcAngleGW","drycool_R_swir1_nir","rainy_ND_green_red","drycool_ND_green_red","drycool_ND_blue_nir","rainy_ND_green_swir2","rainy_nir","dryhot_tcAngleGW","dryhot_R_red_swir1","drycool_ND_blue_swir2","drycool_R_red_swir1","rainy_ND_blue_green","drycool_nir","rainy_R_red_swir1","drycool_tcAngleBW","dryhot_tcDistGW","dryhot_nir","dryhot_ND_green_swir2","rainy_EVI","dryhot_ND_green_red","rainy_ND_blue_red","rainy_ND_blue_swir2"]
 		
 		composite = composite.select(selectedBands)
 		
@@ -356,7 +356,7 @@ class primitives():
 										self.env.modelType);
 		# export the classification
 
-		self.ExportToAsset("urban_rice_barrren",classification)
+		self.ExportToAsset("urban_rice_barrren_median",classification)
 		
 	def addTopography(self,img):
 		"""  Function to add 30m SRTM elevation and derived slope, aspect, eastness, and 
@@ -598,10 +598,10 @@ if __name__ == "__main__":
 	ee.Initialize()
     
 	# import the images
-	dryhot = ee.Image("projects/servir-mekong/usgs_sr_composites/drycool/SC_drycool2015_2016Medoid")
-	drycool = ee.Image("projects/servir-mekong/usgs_sr_composites/dryhot/SC_dryhot2016_2016Medoid")
-	rainy = ee.Image("projects/servir-mekong/usgs_sr_composites/rainy/SC_rainy2016_2016Medoid")
+	dryhot = ee.Image("projects/servir-mekong/usgs_sr_composites/drycool/SC_drycool2014_2015Median")
+	drycool = ee.Image("projects/servir-mekong/usgs_sr_composites/dryhot/SC_dryhot2015_2015Median")
+	rainy = ee.Image("projects/servir-mekong/usgs_sr_composites/rainy/SC_rainy2015_2015Median")
 	
-	trainingDataSet = ee.FeatureCollection("ft:19qZ8fInJI8IZ32N2HcPUpQqWrzEpEmpk8LLxSBrC")
+	trainingDataSet = ee.FeatureCollection("ft:1WyjgjaTRj1_oszNa3hxZxi3o7PMa0j4SgN6MlBU1")
 	primitives().createPrimitive(drycool,dryhot,rainy,trainingDataSet,year)
 
