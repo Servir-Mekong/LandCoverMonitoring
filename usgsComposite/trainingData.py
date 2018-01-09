@@ -408,7 +408,8 @@ class primitives():
 			   "swir1_stdDev","swir2_stdDev","ND_nir_swir2_stdDev",\
 			   "ND_green_swir1_stdDev","ND_nir_red_stdDev","thermal",\
 			   "thermal_stdDev",'brightness','greenness','wetness',\
-			   'tcAngleBG','tcAngleGW','tcAngleBW','tcDistBG','tcDistGW'
+			   'tcAngleBG','tcAngleGW','tcAngleBW','tcDistBG','tcDistGW',\
+			   'tcDistBW','fourth', 'fifth', 'sixth'
 			   ]
 		
 		jrcBands = ['occurrence','change_abs','change_norm','seasonality','transition','max_extent']
@@ -580,7 +581,7 @@ if __name__ == "__main__":
     
     # need a function to select unique years from ft here
         
-	calibrationSet = ee.FeatureCollection("users/servirmekong/calibration/FINAL_calibration")
+	calibrationSet = ee.FeatureCollection("users/servirmekong/calibration/BarrenCropImpervRiceOthercalibration")
 
 	#years = [2009,2010,2011,2014,2015,2016]
 	years = [2015]
@@ -607,7 +608,7 @@ if __name__ == "__main__":
 	
 		counter+=1
 	
-	task = ee.batch.Export.table.toDrive(reference,"training_crop_barren_rice_imperv_other_medoid_FinalCalibration2015");
+	task = ee.batch.Export.table.toDrive(reference,"training_crop_barren_rice_imperv_other_medoid_calibration");
 			
 	task.start() 
 		

@@ -49,10 +49,10 @@ class environment(object):
 		self.timeString = time.strftime("%Y%m%d_%H%M%S")
 		
 		self.assetName = "test_primitives"
-		self.userID = "projects/servir-mekong/temp/"
+		self.userID = "projects/servir-mekong/temp/" 
 		self.pixSize = 30
 		
-		self.nModels = 50
+		self.nModels = 10
 		
 		self.year = 0
 
@@ -61,19 +61,16 @@ class environment(object):
 		mekongRegion = mekongBuffer.geometry();
 		self.studyArea = mekongRegion;
 
-		#Load training data from Fusion Table (remove or rename columns 'system:index' and '.geo')
-		self.barrenCropBuiltupRice_training = ee.FeatureCollection("ft:1B7JscqIb9L8QjTjnWEfr2UvXQJqwfe1hKegnY-zs")
-		self.barrenCropBuiltupRice_training =   ee.FeatureCollection("ft:1nahZF9LcjxObfnJmHz6HUG1URocUZrToi6FgeeCT")
-		#self.grassShrubTree_training = ee.FeatureCollection('ft:1SPIfoYx5q8p3_c12gbGu8aI6EiBf9f79rVc6b_0d');
-		#self.leafType_training = ee.FeatureCollection('ft:1KXZQEmSS20IOouYSn3urxWr53w45kfsmLzl0e5_c');
-		#self.mangrove_training = ee.FeatureCollection('ft:1LIRp1cw2uWWmXKBNUzz6yqwT1ZQ5h4Nri9Lygqq2');
-		#self.phenology_training = ee.FeatureCollection('ft:1QatttVeXWGIdTTLoyFWTBEpcDHJRuQHJF2YAYgCI');
-
-		
+		self.composite = "Medoid"
 
 		self.classFieldName = 'land_class';
 		
-		self.modelType = 'RF'
+		#self.modelType = 'RF'
+		#self.modelType = 'SVM'
+		self.modelType = 'per'
+		self.modelType = 'nav'
+		
+		self.exportName = 'urban_crop_barren_rice_'  + self.modelType + self.composite + str(self.nModels)
 
 
 
@@ -155,6 +152,7 @@ class indices():
 			img = img.addBands(tcAngleBG).addBands(tcAngleGW).addBands(tcAngleBW).addBands(tcDistBG).addBands(tcDistGW).addBands(tcDistBW);
 			
 			return img;
+	
 	
 		img = getTasseledCap(img)
 		img = addTCAngles(img)
@@ -338,25 +336,44 @@ class primitives():
 		composite = self.addJRC(composite)
 		composite = self.addNightLights(composite,y)
 		
-		selectedBands = ["elevation","drycool_ND_swir1_swir2","rainy_blue","rainy_tcAngleGW","dryhot_green","drycool_blue","slope","dryhot_tcDistBG","rainy_tcAngleBW","dryhot_ND_blue_swir1","rainy_tcDistBG","rainy_ND_blue_nir","drycool_tcDistBG","drycool_tcAngleGW","drycool_R_swir1_nir","rainy_ND_green_red","drycool_ND_green_red","drycool_ND_blue_nir","rainy_ND_green_swir2","rainy_nir","dryhot_tcAngleGW","dryhot_R_red_swir1","drycool_ND_blue_swir2","drycool_R_red_swir1","rainy_ND_blue_green","drycool_nir","rainy_R_red_swir1","drycool_tcAngleBW","dryhot_tcDistGW","dryhot_nir","dryhot_ND_green_swir2","rainy_EVI","dryhot_ND_green_red","rainy_ND_blue_red","rainy_ND_blue_swir2"]
+		selectedBands = ['drycool_blue', 'drycool_green', 'drycool_red', 'drycool_nir', 'drycool_swir1', 'drycool_swir2', 'drycool_blue_stdDev', 'drycool_green_stdDev', 'drycool_red_stdDev', 'drycool_nir_stdDev', \
+						 'drycool_swir1_stdDev', 'drycool_swir2_stdDev', 'drycool_ND_nir_swir2_stdDev', 'drycool_ND_green_swir1_stdDev', 'drycool_ND_nir_red_stdDev','drycool_thermal', \
+						 'drycool_thermal_stdDev', 'drycool_brightness', 'drycool_greenness', 'drycool_wetness', 'drycool_fourth', 'drycool_fifth', 'drycool_sixth', 'drycool_tcAngleBG', \
+						 'drycool_tcAngleGW', 'drycool_tcAngleBW', 'drycool_tcDistBG', 'drycool_tcDistGW', 'drycool_tcDistBW', 'drycool_ND_blue_green', 'drycool_ND_blue_red', 'drycool_ND_blue_nir', \
+						 'drycool_ND_blue_swir1', 'drycool_ND_blue_swir2', 'drycool_ND_green_red', 'drycool_ND_green_nir', 'drycool_ND_green_swir1', 'drycool_ND_green_swir2', 'drycool_ND_red_swir1', \
+						 'drycool_ND_red_swir2', 'drycool_ND_nir_red', 'drycool_ND_nir_swir1', 'drycool_ND_nir_swir2', 'drycool_ND_swir1_swir2', 'drycool_R_swir1_nir', 'drycool_R_red_swir1', 'drycool_EVI', \
+						 'drycool_SAVI', 'drycool_IBI', 'dryhot_blue', 'dryhot_green', 'dryhot_red', 'dryhot_nir', 'dryhot_swir1', 'dryhot_swir2', 'dryhot_blue_stdDev', 'dryhot_green_stdDev', 'dryhot_red_stdDev', \
+						 'dryhot_nir_stdDev', 'dryhot_swir1_stdDev', 'dryhot_swir2_stdDev', 'dryhot_ND_nir_swir2_stdDev', 'dryhot_ND_green_swir1_stdDev', 'dryhot_ND_nir_red_stdDev', 'dryhot_thermal', 'dryhot_thermal_stdDev', \
+						 'dryhot_brightness', 'dryhot_greenness', 'dryhot_wetness', 'dryhot_fourth', 'dryhot_fifth', 'dryhot_sixth', \
+						 'dryhot_tcAngleBG', 'dryhot_tcAngleGW', 'dryhot_tcAngleBW', 'dryhot_tcDistBG', 'dryhot_tcDistGW', 'dryhot_tcDistBW', 'dryhot_ND_blue_green', 'dryhot_ND_blue_red', 'dryhot_ND_blue_nir', \
+						 'dryhot_ND_blue_swir1', 'dryhot_ND_blue_swir2', 'dryhot_ND_green_red', 'dryhot_ND_green_nir', 'dryhot_ND_green_swir1', 'dryhot_ND_green_swir2', 'dryhot_ND_red_swir1', \
+						 'dryhot_ND_red_swir2', 'dryhot_ND_nir_red', 'dryhot_ND_nir_swir1', 'dryhot_ND_nir_swir2', 'dryhot_ND_swir1_swir2', 'dryhot_R_swir1_nir', 'dryhot_R_red_swir1', 'dryhot_EVI', \
+						 'dryhot_SAVI', 'dryhot_IBI', 'rainy_blue', 'rainy_green', 'rainy_red', 'rainy_nir', 'rainy_swir1', 'rainy_swir2', 'rainy_blue_stdDev', 'rainy_green_stdDev', 'rainy_red_stdDev', \
+						 'rainy_nir_stdDev', 'rainy_swir1_stdDev', 'rainy_swir2_stdDev', 'rainy_ND_nir_swir2_stdDev', 'rainy_ND_green_swir1_stdDev', 'rainy_ND_nir_red_stdDev', 'rainy_thermal', \
+						 'rainy_thermal_stdDev','rainy_brightness', 'rainy_greenness', 'rainy_wetness', 'rainy_fourth', 'rainy_fifth', 'rainy_sixth', 'rainy_tcAngleBG', 'rainy_tcAngleGW', \
+						 'rainy_tcAngleBW', 'rainy_tcDistBG', 'rainy_tcDistGW', 'rainy_tcDistBW', 'rainy_ND_blue_green', 'rainy_ND_blue_red', 'rainy_ND_blue_nir', 'rainy_ND_blue_swir1', 'rainy_ND_blue_swir2', \
+						 'rainy_ND_green_red', 'rainy_ND_green_nir', 'rainy_ND_green_swir1', 'rainy_ND_green_swir2', 'rainy_ND_red_swir1', 'rainy_ND_red_swir2', 'rainy_ND_nir_red', 'rainy_ND_nir_swir1', \
+						 'rainy_ND_nir_swir2', 'rainy_ND_swir1_swir2', 'rainy_R_swir1_nir', 'rainy_R_red_swir1', 'rainy_EVI', 'rainy_SAVI', 'rainy_IBI', 'occurrence', 'change_abs', 'change_norm', 'seasonality', \
+						 'transition', 'max_extent', 'elevation', 'slope', 'aspect', 'eastness', 'northness']
+
 		
 		composite = composite.select(selectedBands)
 		
 		print composite.bandNames().getInfo()
 		
-		classNames = ee.List(['crop','imperv','barren','rice',"other"]);
+		classNames = ee.List(['barren','imperv','crop','rice',"other"]);
 
 		# run the model		
 		classification = self.getBaggedModel(composite, \
-										trainingDataSet, \
-										composite.bandNames(), \
-										self.env.nModels, \
-										self.env.classFieldName, \
-										classNames, \
-										self.env.modelType);
+						     trainingDataSet, \
+						     composite.bandNames(), \
+						     self.env.nModels, \
+						     self.env.classFieldName, \
+						     classNames, \
+						     self.env.modelType);
 		# export the classification
 
-		self.ExportToAsset("urban_rice_barrren_median",classification)
+		self.ExportToAsset(self.env.exportName,classification)
 		
 	def addTopography(self,img):
 		"""  Function to add 30m SRTM elevation and derived slope, aspect, eastness, and 
@@ -463,6 +480,10 @@ class primitives():
 				classifier = ee.Classifier.svm().train(data_m,classFieldName,bands);
 			elif modelType == 'RF':
 				classifier = ee.Classifier.randomForest(1,0,1,1,False,m).train(data_m,classFieldName,bands);
+			elif modelType == 'per':	
+				classifier = ee.Classifier.perceptron(1,True).train(data_m,classFieldName,bands);
+			elif modelType == 'nav':
+			    classifier = ee.Classifier.naiveBayes().train(data_m,classFieldName,bands);
 
     		# Run the classifier on the image
 			classification = image.classify(classifier,'prediction');
@@ -576,6 +597,7 @@ class primitives():
 
 if __name__ == "__main__":
   
+	
     # set argument parsing object
 	parser = argparse.ArgumentParser(description="Create primitive composite using Google Earth Engine.")
    
@@ -596,12 +618,22 @@ if __name__ == "__main__":
 	addUserCredentials(userName)
 
 	ee.Initialize()
+	
+	env = environment()
     
 	# import the images
-	dryhot = ee.Image("projects/servir-mekong/usgs_sr_composites/drycool/SC_drycool2014_2015Median")
-	drycool = ee.Image("projects/servir-mekong/usgs_sr_composites/dryhot/SC_dryhot2015_2015Median")
-	rainy = ee.Image("projects/servir-mekong/usgs_sr_composites/rainy/SC_rainy2015_2015Median")
+	dryhot = ee.Image("projects/servir-mekong/usgs_sr_composites/drycool/SC_drycool2014_2015" + env.composite)
+	drycool = ee.Image("projects/servir-mekong/usgs_sr_composites/dryhot/SC_dryhot2015_2015" + env.composite)
+	rainy = ee.Image("projects/servir-mekong/usgs_sr_composites/rainy/SC_rainy2015_2015"+ env.composite)
 	
-	trainingDataSet = ee.FeatureCollection("ft:1WyjgjaTRj1_oszNa3hxZxi3o7PMa0j4SgN6MlBU1")
-	primitives().createPrimitive(drycool,dryhot,rainy,trainingDataSet,year)
+	if env.composite == "Median":
+	    trainingData = ee.FeatureCollection("ft:1D9vLiiI_KvcMC8ezvjpnUDcUV3lvDvbqoVdboSpJ")
+#	selectedBandsMedian = ["drycool_green","drycool_ND_blue_nir","drycool_ND_green_red","drycool_ND_swir1_swir2","drycool_nir","drycool_R_red_swir1","drycool_tcAngleBW","drycool_tcAngleGW","drycool_tcDistBG","dryhot_blue","dryhot_ND_blue_swir1","dryhot_ND_green_red","dryhot_ND_green_swir2","dryhot_nir","dryhot_R_red_swir1","dryhot_tcAngleGW","dryhot_tcDistBG","dryhot_tcDistGW","elevation","rainy_blue","rainy_ND_blue_green","rainy_ND_blue_nir","rainy_ND_blue_red","rainy_ND_blue_swir2","rainy_ND_green_red","rainy_ND_green_swir2","rainy_nir","rainy_R_red_swir1","rainy_R_swir1_nir","rainy_tcAngleBW","rainy_tcAngleGW","rainy_tcDistBG","slope"]
+	
+	if env.composite == "Medoid":
+	    trainingData = ee.FeatureCollection("ft:1QyUHohRqWW7HEqag0Yio6z99_LLFJNfmyF7XXEYq")
+#	selectedBandsMedoid = ["drycool_blue","drycool_ND_blue_nir","drycool_ND_blue_swir2","drycool_ND_green_red","drycool_ND_swir1_swir2","drycool_nir","drycool_R_red_swir1","drycool_R_swir1_nir","drycool_tcAngleBW","drycool_tcAngleGW","drycool_tcDistBG","dryhot_green","dryhot_ND_blue_swir1","dryhot_ND_blue_swir2","dryhot_ND_green_red","dryhot_ND_green_swir2","dryhot_nir","dryhot_R_red_swir1","dryhot_tcAngleGW","dryhot_tcDistBG","dryhot_tcDistGW","elevation","rainy_blue","rainy_ND_blue_green","rainy_ND_blue_nir","rainy_ND_blue_red","rainy_ND_blue_swir2","rainy_ND_green_red","rainy_ND_green_swir2","rainy_ND_red_swir2","rainy_nir","rainy_R_red_swir1","rainy_tcAngleBW","rainy_tcAngleGW","rainy_tcDistBG","slope"]
+
+
+	primitives().createPrimitive(drycool,dryhot,rainy,trainingData,year)#,selectedBandsMedoid )
 
