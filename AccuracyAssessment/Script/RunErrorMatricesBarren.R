@@ -7,12 +7,23 @@ library(ggplot2)
 library(segmented)
 
 ## Load in data.
-CEOfull <- read.csv('.\\AccuracyAssessment\\Data\\Validation_20170729.csv')
-colnamesfull(CEO)[49]<-'ephemeral'
+setwd('C:\\Users\\krtenneson\\Desktop\\RLCMSgithub\\LandCoverMonitoring')
 
-colnames(CEOfull)
+CEOfull <- read.csv('.\\AccuracyAssessment\\Data\\Validation_20180226.csv')
+
+colnames(CEOfull)[5:22]
 CEOfull$ID <- seq(1:length(CEOfull$ANALYSES))
-  
+
+i = 5
+length(CEOfull$LULC.BARREN.OTHER[CEOfull[,i] != 0])
+i = i + 1
+
+Barren<-hist(CEOfull$LULC.BARREN.OTHER)
+cbind(Barren$breaks[-1], Barren$counts)
+
+
+length
+
 xdata <- CEOfull$barren
 ydata <- CEOfull$BARRENOTHER+CEOfull$MINING+CEOfull$MUDFLATBEACH
 ID <- CEOfull$ID
