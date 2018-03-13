@@ -611,6 +611,12 @@ class SurfaceReflectance():
         startDate = ee.Date.fromYMD(self.env.startYear,1,1)
         endDate = ee.Date.fromYMD(self.env.endYear,12,31)    
 
+	compositingMethod = ""
+	if self.env.calcMedoid = True:
+	    compositingMethod = "Medoid"
+	if self.env.calcMedian = True
+	    compositingMethod = "Median"	    
+
 	image = ee.Image(img).set({'system:time_start':startDate.millis(), \
 				    'startyear':self.env.startYear, \
 			            'endyear':self.env.endYear, \
@@ -640,6 +646,7 @@ class SurfaceReflectance():
 				    'gap_filling':str(self.env.fillGaps),\
 				    'landsat_7_scanline':str(self.env.useL7scanline),\
 				    'years_of_gap_filling':self.env.fillGapYears,\
+				    'compositingMethod':compositingMethod,\
 				    'version':'1.0'}).clip(self.env.mekongRegion) 
 
 

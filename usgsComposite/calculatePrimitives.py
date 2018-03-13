@@ -48,11 +48,12 @@ class environment(object):
         #ee.Initialize()
 		self.timeString = time.strftime("%Y%m%d_%H%M%S")
 		
-		self.assetName = "test_primitives"
-		self.userID = "projects/servir-mekong/temp/" 
+		self.year = 0
+		
+		self.userID = "projects/servir-mekong/" 
 		self.pixSize = 30
 		
-		self.nModels = 10
+		self.nModels = 100
 		
 		self.year = 0
 
@@ -60,18 +61,26 @@ class environment(object):
 		mekongBuffer = ee.FeatureCollection('ft:1LEGeqwlBCAlN61ie5ol24NdUDqB1MgpFR_sJNWQJ');
 		mekongRegion = mekongBuffer.geometry();
 		self.studyArea = mekongRegion;
+		
+		#self.studyArea = ee.Geometry.Polygon([[105.260,21.553],[105.260,20.6],[106.556,20.6],[106.446,21.527],[105.260,21.553]])
 
-		self.composite = "Medoid"
+
+		self.composite = "Median"
 
 		self.classFieldName = 'land_class';
 		
-		#self.modelType = 'RF'
+		self.modelType = 'RF'
 		#self.modelType = 'SVM'
-		self.modelType = 'per'
-		self.modelType = 'nav'
+		#self.modelType = 'per'
+		#self.modelType = 'nav'
+		#self.modelType = 'cart'
 		
-		self.exportName = 'urban_crop_barren_rice_'  + self.modelType + self.composite + str(self.nModels)
+		self.exportName = ''#  + self.modelType + self.composite + str(self.nModels)
+		#self.exportName = 'wetlands_'  + self.modelType + self.composite + str(self.nModels)
+		self.assetName = ''#  + self.modelType + self.composite + str(self.nModels)
+		#self.assetName = 'wetlands_'  + self.modelType + self.composite + str(self.nModels)
 
+		self.trainingData = "1M71zwCyPyqEEuq8IBrWewONoBVDWHl22D01siCV_"
 
 
 class indices():
@@ -289,6 +298,7 @@ class primitives():
 		
 		# get object with indices
 		self.indices = indices() 
+		
 	
 	def importData(self):
 		print "import data"
@@ -304,8 +314,50 @@ class primitives():
 
 		return img
 		
-	def createPrimitive(self,drycool,dryhot,rainy,trainingDataSet,y):
+	def createPrimitive(self,drycool,dryhot,rainy,y,primitive ):
 		""" calculate the primitive """ 
+
+
+		if primitive == "wetlands":
+			self.env.exportName = 'wetlands'  + self.env.modelType + self.env.composite + str(self.env.nModels)
+			self.env.assetName =  'wetlands_' + str(y) 
+			self.env.userID = "projects/servir-mekong/SR_primitives/wetlands/" 
+			trainingDataSet = ee.FeatureCollection("ft:1M71zwCyPyqEEuq8IBrWewONoBVDWHl22D01siCV_")
+			classNames = ee.List(['wetlands',"other"]);
+		
+		if primitive == "mangroves":
+			self.env.exportName = 'mangroves'  + self.env.modelType + self.env.composite + str(self.env.nModels)
+			self.env.assetName =  'mangroves_' + str(y)
+			self.env.userID = "projects/servir-mekong/SR_primitives/mangroves/" 
+			trainingDataSet = ee.FeatureCollection("ft:1pLatAgQLPdzU__wFLZ74591o-t-RwnHNSAayeket")
+			classNames = ee.List(['mangroves',"other"]);
+			
+		if primitive == "barren":
+			self.env.exportName = 'barren_imperv_crop_rice'  + self.env.modelType + self.env.composite + str(self.env.nModels)
+			self.env.assetName =  'barren_imperv_crop_rice' + str(y) 
+			self.env.userID = "projects/servir-mekong/SR_primitives/barren_imperv_crop_rice/" 
+			#trainingDataSet = ee.FeatureCollection("ft:14AwPqA8ADQU5kCdPN-J2HdD8qUQlREWH97fajYeZ")
+			#trainingDataSet = ee.FeatureCollection("ft:1fYKlAs2Xba3HT66FTutrehZROXOMQVuGMkTvJo0c") # allyears
+			trainingDataSet = ee.FeatureCollection("ft:10C65Hh-VE4K7IrzUISygmI4pX4HGi98MDKJ9lIzM") # mandaylay updated
+			classNames = ee.List(['barren','imperv','crop','rice',"other"]);
+			
+		if primitive == "grass":
+			self.env.exportName = 'grass'  + self.env.modelType + self.env.composite + str(self.env.nModels)
+			self.env.assetName =  'grass_' + str(y) 
+			self.env.userID = "projects/servir-mekong/SR_primitives/grass/" 
+			trainingDataSet = ee.FeatureCollection("ft:1SvpKv7KA5LSwgVTcmgsY984oPBLxRwexo32S7lrl")
+			classNames = ee.List(['grass',"other"]);			
+			
+		if primitive == "cropplantation":
+			self.env.exportName = 'cropplantation'  + self.env.modelType + self.env.composite + str(self.env.nModels)
+			self.env.assetName =  'cropplantation_' + str(y) 
+			self.env.userID = "projects/servir-mekong/SR_primitives/cropplantation/" 
+			trainingDataSet = ee.FeatureCollection("ft:1a-YMC1xKrIbHczW3RuurltiOPY5ygsrg2Cv8zo6B")
+			classNames = ee.List(['cropplantation',"other"]);				
+			
+			
+			
+		self.env.startYear = y		
 
 		covariates = ["ND_blue_green","ND_blue_red","ND_blue_nir","ND_blue_swir1","ND_blue_swir2","ND_green_red","ND_green_nir","ND_green_swir1","ND_green_swir2","ND_red_swir1","ND_red_swir2","ND_nir_red","ND_nir_swir1","ND_nir_swir2","ND_swir1_swir2","R_swir1_nir","R_red_swir1","EVI","SAVI","IBI"]
 
@@ -334,7 +386,10 @@ class primitives():
 		composite = drycool.addBands(dryhot).addBands(rainy).addBands(water);
 		composite = self.addTopography(composite);
 		composite = self.addJRC(composite)
-		composite = self.addNightLights(composite,y)
+		#composite = self.addNightLights(composite,y)
+		
+		distCoast = ee.Image('projects/servir-mekong/Primitives/DistancetoCoast_1k').float().rename(['distCoast']);
+		composite = composite.addBands(distCoast)
 		
 		selectedBands = ['drycool_blue', 'drycool_green', 'drycool_red', 'drycool_nir', 'drycool_swir1', 'drycool_swir2', 'drycool_blue_stdDev', 'drycool_green_stdDev', 'drycool_red_stdDev', 'drycool_nir_stdDev', \
 						 'drycool_swir1_stdDev', 'drycool_swir2_stdDev', 'drycool_ND_nir_swir2_stdDev', 'drycool_ND_green_swir1_stdDev', 'drycool_ND_nir_red_stdDev','drycool_thermal', \
@@ -354,14 +409,15 @@ class primitives():
 						 'rainy_tcAngleBW', 'rainy_tcDistBG', 'rainy_tcDistGW', 'rainy_tcDistBW', 'rainy_ND_blue_green', 'rainy_ND_blue_red', 'rainy_ND_blue_nir', 'rainy_ND_blue_swir1', 'rainy_ND_blue_swir2', \
 						 'rainy_ND_green_red', 'rainy_ND_green_nir', 'rainy_ND_green_swir1', 'rainy_ND_green_swir2', 'rainy_ND_red_swir1', 'rainy_ND_red_swir2', 'rainy_ND_nir_red', 'rainy_ND_nir_swir1', \
 						 'rainy_ND_nir_swir2', 'rainy_ND_swir1_swir2', 'rainy_R_swir1_nir', 'rainy_R_red_swir1', 'rainy_EVI', 'rainy_SAVI', 'rainy_IBI', 'occurrence', 'change_abs', 'change_norm', 'seasonality', \
-						 'transition', 'max_extent', 'elevation', 'slope', 'aspect', 'eastness', 'northness']
+						 'transition', 'max_extent', 'elevation', 'slope', 'aspect', 'eastness', 'northness','distCoast']
 
-		
+	
 		composite = composite.select(selectedBands)
 		
 		print composite.bandNames().getInfo()
 		
-		classNames = ee.List(['barren','imperv','crop','rice',"other"]);
+		
+		#classNames = ee.List(['wetlands',"other"]);
 
 		# run the model		
 		classification = self.getBaggedModel(composite, \
@@ -372,6 +428,8 @@ class primitives():
 						     classNames, \
 						     self.env.modelType);
 		# export the classification
+		
+		classification = classification.clip(self.env.studyArea)
 
 		self.ExportToAsset(self.env.exportName,classification)
 		
@@ -484,6 +542,8 @@ class primitives():
 				classifier = ee.Classifier.perceptron(1,True).train(data_m,classFieldName,bands);
 			elif modelType == 'nav':
 			    classifier = ee.Classifier.naiveBayes().train(data_m,classFieldName,bands);
+			elif modelType == 'cart':
+			    classifier = ee.Classifier.cart().train(data_m,classFieldName,bands);
 
     		# Run the classifier on the image
 			classification = image.classify(classifier,'prediction');
@@ -580,14 +640,24 @@ class primitives():
 	def ExportToAsset(self,name,img):  
 		"""export to asset """
 		
-		outputName = self.env.userID + name + self.env.assetName + self.env.timeString
+		outputName = self.env.userID + self.env.assetName  #+ self.env.timeString
 		logging.info('export image to asset: ' + str(outputName)) 
-		#startDate = ee.Date.fromYMD(self.env.startYear,1,1)
+		
+		region = ee.Geometry.Polygon(self.env.studyArea.bounds().getInfo()['coordinates'])
+		
+		startDate = ee.Date.fromYMD(self.env.startYear,1,1)
 		#endDate = ee.Date.fromYMD(self.env.endYear,12,31)    
 
 		#image = ee.Image(img).set({'system:time_start':startDate.millis(), \
-	
-		region = ee.Geometry.Polygon(img.geometry().getInfo()['coordinates'])
+		
+		img = img.multiply(100).int16().clip(self.env.studyArea)
+		
+		img = img.set({'system:time_start':startDate.millis(), \
+					   'modeltype':self.env.modelType, \
+					   'composite':self.env.composite, \
+					   'nmodels':self.env.nModels, \
+					   'trainingTable':self.env.trainingData})
+				
 		task_ordered = ee.batch.Export.image.toAsset(image=ee.Image(img), description=self.env.assetName, assetId=outputName,region=region['coordinates'], maxPixels=1e13,scale=self.env.pixSize)
         
         # start task
@@ -604,14 +674,17 @@ if __name__ == "__main__":
 	parser.add_argument('--year','-y', type=str,required=True, \
                         help="Year to perform the ats correction and save to asset format in 'YYYY'")
 
-	parser.add_argument('--user','-u', type=str, default="servir-mekong",choices=['servir-mekong','servirmekong',"ate","biplov","quyen"], \
+	parser.add_argument('--user','-u', type=str, default="servir-mekong",choices=['servir-mekong','servirmekong',"ate","biplov","quyen","atesig","adpc","KSA"], \
+						help="specify user account to run task")
+
+	parser.add_argument('--primitive','-p', required=True,type=str, default="None",choices=["wetlands","mangroves","barren","grass","cropplantation"], \
 						help="specify user account to run task")
 
 	args = parser.parse_args() # get arguments  
   
 	# user account to run task on
 	userName = args.user
-	year = int(args.year)
+	y = int(args.year)
 	#self.env.year = year
 
 	# create a new file in ~/.config/earthengine/credentials with token of user
@@ -620,20 +693,24 @@ if __name__ == "__main__":
 	ee.Initialize()
 	
 	env = environment()
-    
+   
 	# import the images
-	dryhot = ee.Image("projects/servir-mekong/usgs_sr_composites/drycool/SC_drycool2014_2015" + env.composite)
-	drycool = ee.Image("projects/servir-mekong/usgs_sr_composites/dryhot/SC_dryhot2015_2015" + env.composite)
-	rainy = ee.Image("projects/servir-mekong/usgs_sr_composites/rainy/SC_rainy2015_2015"+ env.composite)
+	dryhot = ee.Image("projects/servir-mekong/usgs_sr_composites/drycool/SC_drycool" + str(int(y)-1) + "_"  + str(y) + env.composite) #.clip(env.studyArea)
+	drycool = ee.Image("projects/servir-mekong/usgs_sr_composites/dryhot/SC_dryhot" + str(y) + "_"  + str(y) + env.composite) #.clip(env.studyArea)
+	rainy = ee.Image("projects/servir-mekong/usgs_sr_composites/rainy/SC_rainy" + str(y) + "_"  + str(y) + env.composite) #.clip(env.studyArea)
 	
-	if env.composite == "Median":
-	    trainingData = ee.FeatureCollection("ft:1D9vLiiI_KvcMC8ezvjpnUDcUV3lvDvbqoVdboSpJ")
+	#if env.composite == "Median":
+		#trainingData = ee.FeatureCollection("14AwPqA8ADQU5kCdPN-J2HdD8qUQlREWH97fajYeZ") # all barren, ..
+		#trainingData = ee.FeatureCollection("ft:1M71zwCyPyqEEuq8IBrWewONoBVDWHl22D01siCV_") # wetlands
+	    #trainingData = ee.FeatureCollection("ft:1pLatAgQLPdzU__wFLZ74591o-t-RwnHNSAayeket") # mangroves
 #	selectedBandsMedian = ["drycool_green","drycool_ND_blue_nir","drycool_ND_green_red","drycool_ND_swir1_swir2","drycool_nir","drycool_R_red_swir1","drycool_tcAngleBW","drycool_tcAngleGW","drycool_tcDistBG","dryhot_blue","dryhot_ND_blue_swir1","dryhot_ND_green_red","dryhot_ND_green_swir2","dryhot_nir","dryhot_R_red_swir1","dryhot_tcAngleGW","dryhot_tcDistBG","dryhot_tcDistGW","elevation","rainy_blue","rainy_ND_blue_green","rainy_ND_blue_nir","rainy_ND_blue_red","rainy_ND_blue_swir2","rainy_ND_green_red","rainy_ND_green_swir2","rainy_nir","rainy_R_red_swir1","rainy_R_swir1_nir","rainy_tcAngleBW","rainy_tcAngleGW","rainy_tcDistBG","slope"]
 	
-	if env.composite == "Medoid":
-	    trainingData = ee.FeatureCollection("ft:1QyUHohRqWW7HEqag0Yio6z99_LLFJNfmyF7XXEYq")
+	#if env.composite == "Medoid":
+	#    trainingData = ee.FeatureCollection("ft:1QyUHohRqWW7HEqag0Yio6z99_LLFJNfmyF7XXEYq")
 #	selectedBandsMedoid = ["drycool_blue","drycool_ND_blue_nir","drycool_ND_blue_swir2","drycool_ND_green_red","drycool_ND_swir1_swir2","drycool_nir","drycool_R_red_swir1","drycool_R_swir1_nir","drycool_tcAngleBW","drycool_tcAngleGW","drycool_tcDistBG","dryhot_green","dryhot_ND_blue_swir1","dryhot_ND_blue_swir2","dryhot_ND_green_red","dryhot_ND_green_swir2","dryhot_nir","dryhot_R_red_swir1","dryhot_tcAngleGW","dryhot_tcDistBG","dryhot_tcDistGW","elevation","rainy_blue","rainy_ND_blue_green","rainy_ND_blue_nir","rainy_ND_blue_red","rainy_ND_blue_swir2","rainy_ND_green_red","rainy_ND_green_swir2","rainy_ND_red_swir2","rainy_nir","rainy_R_red_swir1","rainy_tcAngleBW","rainy_tcAngleGW","rainy_tcDistBG","slope"]
+	
+	
+	#trainingData = ee.FeatureCollection("ft:" + env.trainingData)
 
-
-	primitives().createPrimitive(drycool,dryhot,rainy,trainingData,year)#,selectedBandsMedoid )
+	primitives().createPrimitive(drycool,dryhot,rainy,y,args.primitive)#,selectedBandsMedoid )
 
