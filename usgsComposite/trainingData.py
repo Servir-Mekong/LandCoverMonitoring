@@ -396,7 +396,21 @@ class primitives():
 		
 		# disable for now
 		#composite = self.addNightLights(composite,y)
-		print composite.bandNames().getInfo()
+		distCoast = ee.Image('projects/servir-mekong/Primitives/DistancetoCoast_1k').float().rename(['distCoast']);
+		composite = composite.addBands(distCoast)
+		
+		#if self.env.addForestLayer:
+		start = ee.Date.fromYMD(y, 1, 1)
+		end  = ee.Date.fromYMD(y, 12,31)
+		tcc = ee.Image(ee.ImageCollection("projects/servir-mekong/Primitives/P_canopy").filterDate(start,end).first()).rename(["tcc"])
+		composite = composite.addBands(tcc)
+		treeheight = ee.Image(ee.ImageCollection("projects/servir-mekong/Primitives/P_tree_height").filterDate(start,end).first()).rename(["treeheight"])
+		composite = composite.addBands(treeheight)
+			
+		auto = ee.Image("users/servirmekong/autocor/autocor_year_2015").select("autocorrelation")
+		composite = composite.addBands(auto.rename(["auto"]))
+		cycle = ee.Image("users/servirmekong/seasons/seasons_year_2015")
+		composite = composite.addBands(cycle)
 		
 		allIndices = ["ND_blue_green","ND_blue_red","ND_blue_nir","ND_blue_swir1", \
 			   "ND_blue_swir2","ND_green_red","ND_green_nir","ND_green_swir1", \
@@ -415,9 +429,11 @@ class primitives():
 		jrcBands = ['occurrence','change_abs','change_norm','seasonality','transition','max_extent']
 		elevationBands = ['eastness','northness','elevation','slope','aspect']
 		nightLights = ['stable_lights']
-		
+		distCoast = ['distCoast']
+		forestLayers = ['tcc', 'treeheight']
+		irrigated = ['auto','R2_cycle1','R2_cycle2','R2_cycle3']
 		# combine all training bands
-		trainingBands = self.renameBands(allIndices,"dryhot") + self.renameBands(allIndices,"drycool") + self.renameBands(allIndices,"rainy") + elevationBands + jrcBands #+ nightLights
+		trainingBands = self.renameBands(allIndices,"dryhot") + self.renameBands(allIndices,"drycool") + self.renameBands(allIndices,"rainy") + elevationBands + jrcBands + distCoast + forestLayers + irrigated
 		
 		# select training bands
 		composite = composite.select(trainingBands)
@@ -581,8 +597,9 @@ if __name__ == "__main__":
     
     # need a function to select unique years from ft here
         
-	calibrationSet = ee.FeatureCollection("users/servirmekong/calibration/BarrenCropImpervRiceOthercalibration")
+	calibrationSet = ee.FeatureCollection("users/servirmekong/reference/barren").randomColumn("rand")
 
+	calibrationSet = calibrationSet.filter(ee.Filter.lt("rand",0.600))
 	#years = [2009,2010,2011,2014,2015,2016]
 	years = [2015]
     
@@ -608,7 +625,7 @@ if __name__ == "__main__":
 	
 		counter+=1
 	
-	task = ee.batch.Export.table.toDrive(reference,"training_crop_barren_rice_imperv_other_medoid_calibration");
+	task = ee.batch.Export.table.toDrive(reference,"barren");
 			
 	task.start() 
 		
