@@ -342,14 +342,14 @@ class primitives():
 			classNames = ee.List(['mangroves',"other"]);
 			
 		if primitive == "barren":
-			self.env.exportName = 'barren_imperv_crop_rice'  + self.env.modelType + self.env.composite + str(self.env.nModels)
-			self.env.assetName =  'barren_imperv_crop_rice' + str(y) 
-			self.env.userID = "projects/servir-mekong/SR_primitives/barren_imperv_crop_rice/" 
-			self.env.userID = "users/servirmekong/temp/" 
-			#trainingDataSet = ee.FeatureCollection("ft:14AwPqA8ADQU5kCdPN-J2HdD8qUQlREWH97fajYeZ")
-			#trainingDataSet = ee.FeatureCollection("ft:1fYKlAs2Xba3HT66FTutrehZROXOMQVuGMkTvJo0c") # allyears
-			trainingDataSet = ee.FeatureCollection("ft:10C65Hh-VE4K7IrzUISygmI4pX4HGi98MDKJ9lIzM") # mandaylay updated
-			classNames = ee.List(['barren','imperv','crop','rice',"other"]);
+			self.env.exportName = 'barren'  + self.env.modelType + self.env.composite + str(self.env.nModels)
+			self.env.assetName =  'barren' + str(y) 
+			self.env.userID = "projects/servir-mekong/binary_primitives/barren/" 
+			selectedBands = ["distCoast","drycool_blue","drycool_fourth","drycool_ND_red_swir2","drycool_nir","drycool_R_red_swir1","drycool_sixth","drycool_tcAngleGW","drycool_tcDistBG","dryhot_blue",\
+							 "dryhot_fourth","dryhot_nir","dryhot_sixth","dryhot_tcDistBG","rainy_blue","rainy_EVI","rainy_fourth","rainy_ND_blue_nir","rainy_ND_green_red","rainy_ND_red_swir2","rainy_nir",\
+     					     "rainy_R_red_swir1","rainy_R_swir1_nir","rainy_sixth","rainy_tcAngleGW","rainy_tcDistBG","rainy_thermal","slope"]
+			trainingDataSet = ee.FeatureCollection("ft:19DSUBL0RqNl4RwmyzoPWrcmL7dH2aDp72QPMCVmG")
+			classNames = ee.List(['barren',"other"]);
 
 		if primitive == "imperv":
 			self.env.exportName = 'imperv'  + self.env.modelType + self.env.composite + str(self.env.nModels)
@@ -361,16 +361,14 @@ class primitives():
 			trainingDataSet = ee.FeatureCollection("ft:16FHVOH2RVLyM3jzBmpy0g7GHdLQ3t9rHsg3oKgD7") 
 			classNames = ee.List(['imperv',"other"]);
 
-
-
-			
+		
 		if primitive == "grass":
 			self.env.exportName = 'grass'  + self.env.modelType + self.env.composite + str(self.env.nModels)
 			self.env.assetName =  'grass_' + str(y) 
-			self.env.userID = "projects/servir-mekong/SR_primitives/grass/" 
-			selectedBands = ["distCoast","drycool_EVI","drycool_ND_blue_green","drycool_ND_blue_swir1","drycool_ND_blue_swir2","drycool_ND_red_swir1","drycool_R_red_swir1","drycool_tcAngleGW",\
-							 "drycool_thermal","dryhot_blue","dryhot_EVI","dryhot_ND_green_red","dryhot_ND_red_swir2","dryhot_R_red_swir1","dryhot_thermal","dryhot_wetness","elevation", \
-							 "rainy_R_red_swir1","slope","tcc","treeheight"]
+			self.env.userID = "projects/servir-mekong/binary_primitives/grass/" 
+			selectedBands = ["distCoast","drycool_EVI","drycool_ND_blue_green","drycool_ND_blue_swir1","drycool_ND_blue_swir2","drycool_ND_red_swir1","drycool_R_red_swir1",\
+							 "drycool_tcAngleGW","drycool_thermal","dryhot_blue","dryhot_EVI","dryhot_ND_blue_swir1","dryhot_ND_green_red","dryhot_ND_red_swir2","dryhot_R_red_swir1",\
+							 "dryhot_thermal","dryhot_wetness","elevation","slope","tcc","treeheight"]
 			trainingDataSet = ee.FeatureCollection("ft:1ajeo9UVM9o7fGMWoARfMNCxXVzrULSvdSFGsv6Ov")
 			classNames = ee.List(['grass',"other"]);			
 			
@@ -381,7 +379,7 @@ class primitives():
 							 "drycool_sixth","drycool_tcAngleBW","drycool_tcAngleGW","drycool_tcDistBG","drycool_thermal","dryhot_ND_blue_swir2","dryhot_ND_red_swir2","dryhot_R_red_swir1",\
 							 "dryhot_tcAngleGW","dryhot_tcDistBG","elevation","rainy_blue","rainy_EVI","rainy_ND_blue_nir","rainy_ND_blue_swir2","rainy_ND_red_swir2","rainy_nir","rainy_R_red_swir1",\
 							 "rainy_tcAngleBW","rainy_tcAngleGW","rainy_tcDistBG","rainy_tcDistGW","slope","tcc","treeheight"]
-			self.env.userID = "projects/servir-mekong/SR_primitives/cropplantation/" 
+			self.env.userID = "projects/servir-mekong/binary_primitives/cropplantations/" 
 			trainingDataSet = ee.FeatureCollection("ft:1uD_uqVQc_dTS0ZcBHfsyoeLrQtmoBcQOZOsJFFt0")
 			classNames = ee.List(['cropplantation',"other"]);				
 		
@@ -409,19 +407,19 @@ class primitives():
 			trainingDataSet = ee.FeatureCollection("ft:1gQxjd15imuF5lK_9efRCrh4E7pQ7vhd9fMjoGSwi")
 			classNames = ee.List(['rice',"other"]);	
 
-		if primitive == "barren":
-			self.env.exportName = 'barren'  + self.env.modelType + self.env.composite + str(self.env.nModels)
-			self.env.assetName =  'barren_' + str(y) 
-			self.env.userID = "projects/servir-mekong/binary_primitives/barren/" 
+		if primitive == "crops":
+			self.env.exportName = 'crops'  + self.env.modelType + self.env.composite + str(self.env.nModels)
+			self.env.assetName =  'crops_' + str(y) 
+			self.env.userID = "projects/servir-mekong/binary_primitives/crops/" 
 			
 			selectedBands = ["distCoast","drycool_blue","drycool_EVI","drycool_fourth","drycool_ND_blue_nir","drycool_ND_blue_red","drycool_ND_green_red","drycool_ND_swir1_swir2","drycool_R_red_swir1",\
 							 "drycool_R_swir1_nir","drycool_sixth","drycool_tcAngleBW","drycool_tcAngleGW","drycool_tcDistBG","drycool_tcDistGW","dryhot_ND_blue_nir","dryhot_ND_blue_swir1","dryhot_ND_green_swir2",\
 							 "dryhot_ND_red_swir1","dryhot_ND_red_swir2","dryhot_nir","dryhot_R_red_swir1","dryhot_tcDistBG","dryhot_tcDistGW","dryhot_thermal_stdDev","elevation","rainy_fourth","rainy_ND_blue_green",\
 							 "rainy_ND_blue_nir","rainy_ND_blue_red","rainy_R_red_swir1","rainy_tcAngleBW","rainy_tcAngleGW","slope","tcc","treeheight"]
 			trainingDataSet = ee.FeatureCollection("ft:12a03BLHsJ9wsDC8DvySPlbNGuA-jyBcpNNeqE5S4")
-			classNames = ee.List(['barren',"other"]);	
-
-
+			classNames = ee.List(['crops',"other"]);	
+		
+		
 		self.env.trainingData = trainingDataSet
 		self.env.startYear = y		
 
@@ -786,7 +784,7 @@ if __name__ == "__main__":
 	parser.add_argument('--user','-u', type=str, default="servir-mekong",choices=['servir-mekong','servirmekong',"ate","biplov","quyen","atesig","adpc","KSA"], \
 						help="specify user account to run task")
 
-	parser.add_argument('--primitive','-p', required=True,type=str, default="None",choices=["wetlands","mangroves","imperv","grass","cropplantation","rice","irrigated","barren"], \
+	parser.add_argument('--primitive','-p', required=True,type=str, default="None",choices=["crops","wetlands","mangroves","imperv","grass","cropplantation","rice","irrigated","barren"], \
 						help="specify user account to run task")
 
 	args = parser.parse_args() # get arguments  
