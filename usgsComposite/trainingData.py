@@ -395,7 +395,7 @@ class primitives():
 		composite = self.addJRC(composite)
 		
 		# disable for now
-		#composite = self.addNightLights(composite,y)
+		composite = self.addNightLights(composite,y)
 		distCoast = ee.Image('projects/servir-mekong/Primitives/DistancetoCoast_1k').float().rename(['distCoast']);
 		composite = composite.addBands(distCoast)
 		
@@ -433,7 +433,7 @@ class primitives():
 		forestLayers = ['tcc', 'treeheight']
 		irrigated = ['auto','R2_cycle1','R2_cycle2','R2_cycle3']
 		# combine all training bands
-		trainingBands = self.renameBands(allIndices,"dryhot") + self.renameBands(allIndices,"drycool") + self.renameBands(allIndices,"rainy") + elevationBands + jrcBands + distCoast + forestLayers + irrigated
+		trainingBands = self.renameBands(allIndices,"dryhot") + self.renameBands(allIndices,"drycool") + self.renameBands(allIndices,"rainy") + elevationBands + jrcBands + distCoast + forestLayers + nightLights
 		
 		# select training bands
 		composite = composite.select(trainingBands)
@@ -483,8 +483,8 @@ class primitives():
 	def addNightLights(self,img,y):
 		""" Function to add nighlights to the composite' """
 		
-		startDate = ee.Date.fromYMD(y-2, 1, 1)
-		endDate = ee.Date.fromYMD(y-2, 12, 31)
+		startDate = ee.Date.fromYMD(y, 1, 1)
+		endDate = ee.Date.fromYMD(y, 12, 31)
 		
 		if y < 2012:
 		
@@ -597,15 +597,15 @@ if __name__ == "__main__":
     
     # need a function to select unique years from ft here
         
-	calibrationSet = ee.FeatureCollection("users/servirmekong/reference/barren").randomColumn("rand")
+	calibrationSet = ee.FeatureCollection("users/servirmekong/reference/grassAllYearsUpdated") #.randomColumn("rand")
 
-	calibrationSet = calibrationSet.filter(ee.Filter.lt("rand",0.600))
+	#calibrationSet = calibrationSet.filter(ee.Filter.lt("rand",0.100))
 	#years = [2009,2010,2011,2014,2015,2016]
-	years = [2015]
+	years = [2001,2003,2004,2005,2006,2007,2008,2009,2010,2011,2014,2015]
     
 	counter = 0
 	for y in years:
-		
+		calibrationSET = calibrationSet # .filter(ee.Filter.lt("rand",0.200))
 		print y
 		## import the images
 		dryhot = ee.Image("projects/servir-mekong/usgs_sr_composites/dryhot/SC_dryhot" + str(y) + "_" + str(y) +"Medoid")
@@ -615,17 +615,17 @@ if __name__ == "__main__":
 		composite = primitives().createIndices(drycool,dryhot,rainy,y)
 		##print composite.bandNames().getInfo()
 		if counter == 0:
-		    reference = trainingData().createTrainingSample(calibrationSet,composite,y)
+		    reference = trainingData().createTrainingSample(calibrationSET,composite,y)
 		    
 		if counter > 0:
 		    
-		    train = trainingData().createTrainingSample(calibrationSet,composite,y)
+		    train = trainingData().createTrainingSample(calibrationSET,composite,y)
 		    print counter
 		    reference = reference.merge(train)
 	
 		counter+=1
 	
-	task = ee.batch.Export.table.toDrive(reference,"barren");
+	task = ee.batch.Export.table.toDrive(reference,"grassAllYearsUpdated");
 			
 	task.start() 
 		

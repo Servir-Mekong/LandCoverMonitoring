@@ -321,34 +321,53 @@ class primitives():
 
 
 		if primitive == "wetlands":
-			self.env.exportName = 'wetlands'  + self.env.modelType + self.env.composite + str(self.env.nModels)
-			self.env.assetName =  'wetlands_' + str(y) 
+			self.env.exportName = 'wetlandsAll'  + self.env.modelType + self.env.composite + str(self.env.nModels)
+			self.env.assetName =  'wetlandsAll_' + str(y) 
 			self.env.userID = "projects/servir-mekong/binary_primitives/wetlands/" 
 			selectedBands = ["change_abs","distCoast","drycool_blue","drycool_ND_blue_nir","drycool_ND_green_red","drycool_ND_swir1_swir2","drycool_nir","drycool_R_red_swir1",\
 							 "drycool_sixth","drycool_tcAngleGW","drycool_tcDistBG","dryhot_blue","dryhot_ND_green_red","dryhot_ND_green_swir2","dryhot_ND_red_swir1","dryhot_ND_red_swir2",\
 							 "dryhot_nir","dryhot_R_red_swir1","dryhot_tcAngleGW","dryhot_tcDistBG","dryhot_tcDistGW","elevation","occurrence","rainy_blue","rainy_fifth","rainy_ND_red_swir2",\
 							 "rainy_nir","rainy_R_red_swir1","rainy_tcAngleGW","rainy_tcDistGW","slope","tcc","treeheight"] 
+			
+				
+			selectedBands = ["distCoast","drycool_EVI","drycool_ND_green_red","drycool_ND_green_swir2","drycool_ND_swir1_swir2","drycool_nir","drycool_R_swir1_nir","drycool_sixth","drycool_tcDistBG",\
+							 "drycool_tcDistGW","dryhot_ND_green_red","dryhot_ND_nir_swir1","dryhot_ND_swir1_swir2","dryhot_R_red_swir1","dryhot_sixth","dryhot_tcAngleBW","elevation","rainy_EVI","rainy_fifth",\
+							 "rainy_ND_blue_nir","rainy_ND_green_swir2","rainy_ND_red_swir2","rainy_ND_swir1_swir2","rainy_R_red_swir1","rainy_sixth","rainy_tcDistGW","slope","tcc","transition","treeheight"]
+			
 			trainingDataSet = ee.FeatureCollection("ft:1RXwtefKT7jKNV6IAWZSdRDx1q5x5RdQm9XVo-_y-")
+			trainingDataSet = ee.FeatureCollection("ft:1yOGEVdYYDMcjrsFLtm9l6EJnEUq2EfTJd3rMz7Nw") # all years
 			classNames = ee.List(['wetlands',"other"]);
 		
 		if primitive == "mangroves":
-			self.env.exportName = 'mangroves'  + self.env.modelType + self.env.composite + str(self.env.nModels)
-			self.env.assetName =  'mangroves_' + str(y)
+			self.env.exportName = 'mangrovesAll'  + self.env.modelType + self.env.composite + str(self.env.nModels)
+			self.env.assetName =  'mangrovesAll_' + str(y)
 			self.env.userID = "projects/servir-mekong/binary_primitives/mangroves/" 
 			selectedBands = ["distCoast","drycool_blue","drycool_EVI","drycool_ND_blue_nir","drycool_ND_green_red","drycool_ND_swir1_swir2","drycool_sixth","drycool_tcAngleGW",\
 							 "dryhot_blue","dryhot_ND_blue_nir","dryhot_ND_green_swir2","dryhot_sixth","dryhot_tcAngleGW","dryhot_tcDistBG","rainy_IBI","rainy_ND_blue_nir", \
 							 "rainy_ND_swir1_swir2","rainy_tcAngleBW","rainy_tcAngleGW","tcc","treeheight"]
+			
+			
+			selectedBands =	["distCoast","drycool_EVI","drycool_ND_green_swir1","drycool_ND_red_swir2","drycool_ND_swir1_swir2","dryhot_ND_red_swir2","dryhot_ND_swir1_swir2","dryhot_tcAngleGW",\
+							 "elevation","rainy_ND_blue_nir","rainy_ND_green_swir2","rainy_ND_red_swir2","rainy_ND_swir1_swir2","rainy_nir","rainy_R_red_swir1","rainy_tcAngleGW","rainy_tcDistGW","tcc","treeheight"]
+			
 			trainingDataSet = ee.FeatureCollection("ft:1Ud9HdqsG-_MvatTf5PI-4h8y-SkRSWqt6_UO6TzP")
+			trainingDataSet = ee.FeatureCollection("ft:1A7z4r5P69CjKuhAybwvdUyJOyhGswRJVprxLan1t") # all years
 			classNames = ee.List(['mangroves',"other"]);
 			
 		if primitive == "barren":
-			self.env.exportName = 'barren'  + self.env.modelType + self.env.composite + str(self.env.nModels)
-			self.env.assetName =  'barren' + str(y) 
+			self.env.exportName = 'barrenAll'  + self.env.modelType + self.env.composite + str(self.env.nModels)
+			self.env.assetName =  'barrenAll' + str(y) 
 			self.env.userID = "projects/servir-mekong/binary_primitives/barren/" 
 			selectedBands = ["distCoast","drycool_blue","drycool_fourth","drycool_ND_red_swir2","drycool_nir","drycool_R_red_swir1","drycool_sixth","drycool_tcAngleGW","drycool_tcDistBG","dryhot_blue",\
 							 "dryhot_fourth","dryhot_nir","dryhot_sixth","dryhot_tcDistBG","rainy_blue","rainy_EVI","rainy_fourth","rainy_ND_blue_nir","rainy_ND_green_red","rainy_ND_red_swir2","rainy_nir",\
      					     "rainy_R_red_swir1","rainy_R_swir1_nir","rainy_sixth","rainy_tcAngleGW","rainy_tcDistBG","rainy_thermal","slope"]
+			
+			selectedBands = ["drycool_nir","drycool_sixth","drycool_tcDistBG","drycool_tcDistGW","dryhot_blue","dryhot_fifth","dryhot_sixth","rainy_blue","rainy_fifth","rainy_ND_green_red",\
+							 "rainy_ND_nir_swir1","rainy_nir","rainy_sixth","rainy_tcAngleGW","rainy_tcDistBG"] # all years
+			
+			
 			trainingDataSet = ee.FeatureCollection("ft:19DSUBL0RqNl4RwmyzoPWrcmL7dH2aDp72QPMCVmG")
+			trainingDataSet = ee.FeatureCollection("ft:1cmMTOxRPfzmj2M8vziyqxdT8v5aIMW7_QEeFsQuP") # all years
 			classNames = ee.List(['barren',"other"]);
 
 		if primitive == "imperv":
@@ -361,26 +380,59 @@ class primitives():
 			trainingDataSet = ee.FeatureCollection("ft:16FHVOH2RVLyM3jzBmpy0g7GHdLQ3t9rHsg3oKgD7") 
 			classNames = ee.List(['imperv',"other"]);
 
-		
+		if primitive == "impervLight":
+			self.env.exportName = 'impervAll'  + self.env.modelType + self.env.composite + str(self.env.nModels)
+			self.env.assetName =  'impervAll' + str(y) 
+			selectedBands =  ["drycool_fourth","drycool_green","drycool_ND_blue_green","drycool_ND_blue_nir","drycool_ND_swir1_swir2","drycool_nir","drycool_tcDistBG","drycool_tcDistGW","dryhot_fourth",\
+							  "dryhot_ND_blue_swir1","dryhot_nir","dryhot_tcDistBG","dryhot_tcDistGW","dryhot_wetness","rainy_fourth","rainy_ND_blue_green","rainy_ND_green_red","rainy_ND_green_swir2",\
+							  "rainy_nir","rainy_R_swir1_nir","rainy_tcAngleBW","rainy_tcAngleGW","rainy_tcDistBG","stable_lights"]		
+			
+			selectedBands = ["distCoast","drycool_fifth","drycool_fourth","drycool_ND_blue_green","drycool_ND_blue_nir","drycool_ND_swir1_swir2","drycool_nir","drycool_tcDistBG","drycool_tcDistGW",\
+							 "dryhot_EVI","dryhot_fourth","dryhot_nir","dryhot_swir1","dryhot_swir2","dryhot_tcDistGW","dryhot_thermal","elevation","rainy_blue","rainy_fifth","rainy_fourth",\
+							 "rainy_ND_blue_green","rainy_ND_blue_red","rainy_ND_swir1_swir2","rainy_nir","rainy_R_swir1_nir","rainy_red","rainy_swir2","rainy_tcAngleGW","rainy_tcDistBG","rainy_wetness","stable_lights"]	 # all years
+			
+			self.env.userID = "projects/servir-mekong/binary_primitives/impervLights/" 
+			trainingDataSet = ee.FeatureCollection("ft:1EFafmZB31sw0wO9IuVC0FaKdv4iIB52lbu6MdxkB") 
+			trainingDataSet = ee.FeatureCollection("ft:1th7LSfIBF40xLEGWllbTc2MDBRV2qbpp9308Kv5C") # all years
+			trainingDataSet = ee.FeatureCollection("ft:1SLR1Wu9Bfb90EH0nRxCnjZQ-u5yHYEtKe1ANX35L") # all years
+			classNames = ee.List(['imperv',"other"]);
+
+
 		if primitive == "grass":
-			self.env.exportName = 'grass'  + self.env.modelType + self.env.composite + str(self.env.nModels)
-			self.env.assetName =  'grass_' + str(y) 
+			self.env.exportName = 'grassAll'  + self.env.modelType + self.env.composite + str(self.env.nModels)
+			self.env.assetName =  'grassAll_' + str(y) 
 			self.env.userID = "projects/servir-mekong/binary_primitives/grass/" 
 			selectedBands = ["distCoast","drycool_EVI","drycool_ND_blue_green","drycool_ND_blue_swir1","drycool_ND_blue_swir2","drycool_ND_red_swir1","drycool_R_red_swir1",\
 							 "drycool_tcAngleGW","drycool_thermal","dryhot_blue","dryhot_EVI","dryhot_ND_blue_swir1","dryhot_ND_green_red","dryhot_ND_red_swir2","dryhot_R_red_swir1",\
 							 "dryhot_thermal","dryhot_wetness","elevation","slope","tcc","treeheight"]
+			
+			
+			selectedBands = ["distCoast","drycool_EVI","drycool_ND_green_red","drycool_ND_nir_swir1","drycool_ND_red_swir2","drycool_ND_swir1_swir2","drycool_R_red_swir1","drycool_tcAngleBW",\
+							 "drycool_thermal","dryhot_fourth","dryhot_ND_blue_green","dryhot_ND_blue_red","dryhot_ND_red_swir2","dryhot_ND_swir1_swir2","dryhot_R_red_swir1","dryhot_R_swir1_nir",\
+							 "dryhot_thermal","elevation","rainy_IBI","rainy_R_red_swir1","rainy_tcAngleBW","rainy_tcAngleGW","slope","tcc","treeheight"] # all years
+			
+			
 			trainingDataSet = ee.FeatureCollection("ft:1ajeo9UVM9o7fGMWoARfMNCxXVzrULSvdSFGsv6Ov")
+			trainingDataSet = ee.FeatureCollection("ft:1-X92VJpS3Z_hLke3adNFdFGthPPOMVvST2rK6yal")
 			classNames = ee.List(['grass',"other"]);			
 			
 		if primitive == "cropplantation":
-			self.env.exportName = 'cropplantation'  + self.env.modelType + self.env.composite + str(self.env.nModels)
-			self.env.assetName =  'cropplantation_' + str(y) 
+			self.env.exportName = 'cropplantationAll'  + self.env.modelType + self.env.composite + str(self.env.nModels)
+			self.env.assetName =  'cropplantationAll_' + str(y) 
 			selectedBands = ["distCoast","drycool_EVI","drycool_fourth","drycool_IBI","drycool_ND_blue_nir","drycool_ND_green_red","drycool_ND_red_swir2","drycool_nir","drycool_R_red_swir1",\
 							 "drycool_sixth","drycool_tcAngleBW","drycool_tcAngleGW","drycool_tcDistBG","drycool_thermal","dryhot_ND_blue_swir2","dryhot_ND_red_swir2","dryhot_R_red_swir1",\
 							 "dryhot_tcAngleGW","dryhot_tcDistBG","elevation","rainy_blue","rainy_EVI","rainy_ND_blue_nir","rainy_ND_blue_swir2","rainy_ND_red_swir2","rainy_nir","rainy_R_red_swir1",\
 							 "rainy_tcAngleBW","rainy_tcAngleGW","rainy_tcDistBG","rainy_tcDistGW","slope","tcc","treeheight"]
+			
+			
+			
+			
+			selectedBands = ["drycool_EVI","drycool_ND_red_swir2","drycool_nir","drycool_R_red_swir1","drycool_sixth","drycool_tcDistBG","drycool_tcDistGW","dryhot_R_red_swir1","elevation",\
+							 "rainy_EVI","rainy_fifth","rainy_ND_red_swir2","rainy_ND_swir1_swir2","rainy_nir","rainy_R_red_swir1","rainy_tcDistGW","tcc","treeheight"] # all years
+			
 			self.env.userID = "projects/servir-mekong/binary_primitives/cropplantations/" 
 			trainingDataSet = ee.FeatureCollection("ft:1uD_uqVQc_dTS0ZcBHfsyoeLrQtmoBcQOZOsJFFt0")
+			trainingDataSet = ee.FeatureCollection("ft:13vUcvIikM9mUQRv_DZAFAFSSzQ6xFWIWfuM95wJw")
 			classNames = ee.List(['cropplantation',"other"]);				
 		
 		
@@ -397,15 +449,42 @@ class primitives():
 			classNames = ee.List(['irrigated',"other"]);	
 
 		if primitive == "rice":
-			self.env.exportName = 'rice'  + self.env.modelType + self.env.composite + str(self.env.nModels)
-			self.env.assetName =  'rice_' + str(y) 
+			self.env.exportName = 'riceAll'  + self.env.modelType + self.env.composite + str(self.env.nModels)
+			self.env.assetName =  'riceAll_' + str(y) 
 			self.env.userID = "projects/servir-mekong/binary_primitives/rice/" 
 			
 			selectedBands = ["distCoast","drycool_blue","drycool_ND_swir1_swir2","drycool_sixth","dryhot_EVI","dryhot_ND_blue_nir","dryhot_ND_blue_swir1","dryhot_ND_green_swir2","dryhot_tcAngleGW",\
 							 "dryhot_tcDistBG","dryhot_thermal","elevation","rainy_blue","rainy_ND_blue_green","rainy_ND_blue_nir","rainy_ND_green_red","rainy_ND_green_swir2","rainy_tcAngleBW",\
 							 "rainy_tcAngleGW","rainy_thermal","treeheight"]
-			trainingDataSet = ee.FeatureCollection("ft:1gQxjd15imuF5lK_9efRCrh4E7pQ7vhd9fMjoGSwi")
+							 
+			selectedBands = ["distCoast","drycool_EVI","drycool_nir","drycool_R_red_swir1","drycool_tcDistBG","dryhot_EVI","dryhot_fifth","dryhot_ND_red_swir1","dryhot_ND_swir1_swir2","dryhot_R_red_swir1",\
+							 "elevation","rainy_blue","rainy_EVI","rainy_fifth","rainy_fourth","rainy_ND_blue_green","rainy_ND_green_swir2","rainy_ND_nir_swir1","rainy_ND_red_swir2","rainy_ND_swir1_swir2",\
+							 "rainy_R_red_swir1","rainy_tcAngleGW","transition","treeheight"]	# all years
+							  
+			#trainingDataSet = ee.FeatureCollection("ft:1gQxjd15imuF5lK_9efRCrh4E7pQ7vhd9fMjoGSwi")
+			trainingDataSet = ee.FeatureCollection("ft:15HBxvOf9DHzQnQwtba4pXXPEB1ThLsogofZ6VUM5") # allyears
 			classNames = ee.List(['rice',"other"]);	
+
+		if primitive == "riceCrop":
+			self.env.exportName = 'riceCropAll'  + self.env.modelType + self.env.composite + str(self.env.nModels)
+			self.env.assetName =  'riceCropAll_' + str(y) 
+			self.env.userID = "projects/servir-mekong/binary_primitives/riceCrop/" 
+			
+			selectedBands = ["drycool_blue","drycool_EVI","drycool_fourth","drycool_ND_blue_nir","drycool_ND_blue_swir1","drycool_R_red_swir1","drycool_sixth","drycool_swir1_stdDev","drycool_swir2_stdDev",\
+							 "drycool_tcAngleGW","drycool_tcDistBG","dryhot_ND_blue_swir1","dryhot_ND_green_swir2","dryhot_ND_red_swir1","dryhot_nir","dryhot_R_red_swir1","dryhot_sixth","dryhot_tcDistBG",\
+							 "dryhot_tcDistGW","elevation","rainy_blue","rainy_EVI","rainy_fourth","rainy_ND_blue_green","rainy_ND_blue_nir","rainy_ND_blue_red","rainy_ND_green_red","rainy_ND_green_swir2",\
+							 "rainy_ND_red_swir2","rainy_R_red_swir1","rainy_R_swir1_nir","rainy_sixth","rainy_tcAngleBW","rainy_tcAngleGW","slope","treeheight"]
+
+			selectedBands = ["distCoast","drycool_EVI","drycool_fourth","drycool_ND_blue_green","drycool_ND_blue_nir","drycool_ND_swir1_swir2","drycool_nir","drycool_R_red_swir1","drycool_sixth",\
+							 "drycool_tcDistBG","dryhot_blue","dryhot_fifth","dryhot_ND_swir1_swir2","dryhot_R_red_swir1","dryhot_sixth","dryhot_thermal","elevation","rainy_blue","rainy_EVI","rainy_fifth",\
+							 "rainy_fourth","rainy_ND_blue_green","rainy_ND_blue_red","rainy_ND_swir1_swir2","rainy_nir","rainy_R_swir1_nir","rainy_sixth","rainy_tcAngleGW","rainy_tcDistBG","slope","tcc","treeheight"]
+
+
+			trainingDataSet = ee.FeatureCollection("ft:1quyf3Hr7LS3w_d48D55shBFzGTLGyUOm9KNIEcHe")
+			trainingDataSet = ee.FeatureCollection("ft:1g5sq_mDpjcpJNUExZGEZ6-yVNp_brmsCZGq2hrBa") # all
+			trainingDataSet = ee.FeatureCollection("ft:1is-LBJtyhVJcIZTCnYY0fpY_yhTbJ-sIFPVrDtF8") # all
+			classNames = ee.List(['riceCrop',"other"]);	
+
 
 		if primitive == "crops":
 			self.env.exportName = 'crops'  + self.env.modelType + self.env.composite + str(self.env.nModels)
@@ -450,13 +529,13 @@ class primitives():
 		composite = drycool.addBands(dryhot).addBands(rainy).addBands(water);
 		composite = self.addTopography(composite);
 		composite = self.addJRC(composite)
-		#composite = self.addNightLights(composite,y)
+		composite = self.addNightLights(composite,y)
 		
-		#auto = ee.Image("users/servirmekong/autocor/autocor_year_2015").select("autocorrelation")
-		#composite = composite.addBands(auto.rename(["auto"]))
+		auto = ee.Image("users/servirmekong/autocor/autocor_year_2015").select("autocorrelation")
+		composite = composite.addBands(auto.rename(["auto"]))
 		
-		#cycle = ee.Image("users/servirmekong/seasons/seasons_year_2015")
-		#composite = composite.addBands(cycle)
+		cycle = ee.Image("users/servirmekong/seasons/seasons_year_2015")
+		composite = composite.addBands(cycle)
 		
 		distCoast = ee.Image('projects/servir-mekong/Primitives/DistancetoCoast_1k').float().rename(['distCoast']);
 		composite = composite.addBands(distCoast)
@@ -564,8 +643,8 @@ class primitives():
 	def addNightLights(self,img,y):
 		""" Function to add nighlights to the composite' """
 		
-		startDate = ee.Date.fromYMD(y-2, 1, 1)
-		endDate = ee.Date.fromYMD(y-2, 12, 31)
+		startDate = ee.Date.fromYMD(y, 1, 1)
+		endDate = ee.Date.fromYMD(y, 12, 31)
 		
 		if y < 2012:
 		
@@ -784,7 +863,7 @@ if __name__ == "__main__":
 	parser.add_argument('--user','-u', type=str, default="servir-mekong",choices=['servir-mekong','servirmekong',"ate","biplov","quyen","atesig","adpc","KSA"], \
 						help="specify user account to run task")
 
-	parser.add_argument('--primitive','-p', required=True,type=str, default="None",choices=["crops","wetlands","mangroves","imperv","grass","cropplantation","rice","irrigated","barren"], \
+	parser.add_argument('--primitive','-p', required=True,type=str, default="None",choices=["crops","wetlands","mangroves","imperv","grass","cropplantation","rice","irrigated","barren","riceCrop","impervLight"], \
 						help="specify user account to run task")
 
 	args = parser.parse_args() # get arguments  
