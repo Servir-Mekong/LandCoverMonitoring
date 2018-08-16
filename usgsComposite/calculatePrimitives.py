@@ -62,9 +62,6 @@ class environment(object):
 		mekongBuffer = ee.FeatureCollection('ft:1LEGeqwlBCAlN61ie5ol24NdUDqB1MgpFR_sJNWQJ');
 		mekongRegion = mekongBuffer.geometry();
 		self.studyArea = mekongRegion;
-		#self.studyArea = ee.Geometry.Polygon([[103.876,18.552],[105.806,18.552],[105.806,19.999],[103.876,19.999],[103.876,18.552]])
-		
-		#self.studyArea = ee.Geometry.Polygon([[105.260,21.553],[105.260,20.6],[106.556,20.6],[106.446,21.527],[105.260,21.553]])
 
 
 		self.composite = "Medoid"
@@ -72,17 +69,10 @@ class environment(object):
 		self.classFieldName = 'land_class';
 		
 		self.modelType = 'RF'
-		#self.modelType = 'SVM'
-		#self.modelType = 'per'
-		#self.modelType = 'nav'
-		#self.modelType = 'cart'
 		
-		self.exportName = ''#  + self.modelType + self.composite + str(self.nModels)
-		#self.exportName = 'wetlands_'  + self.modelType + self.composite + str(self.nModels)
-		self.assetName = ''#  + self.modelType + self.composite + str(self.nModels)
-		#self.assetName = 'wetlands_'  + self.modelType + self.composite + str(self.nModels)
-
-		self.trainingData = "1M71zwCyPyqEEuq8IBrWewONoBVDWHl22D01siCV_"
+		self.exportName = ''
+		self.assetName = ''
+		
 
 
 class indices():
@@ -743,13 +733,7 @@ class primitives():
 			observations of any class. """
 
 		print image.bandNames().getInfo()
-		training_bands = bands # ee.List(["distCoast", "rainy_ND_nir_swir2", "drycool_wetness", \
-					#			  "elevation", "dryhot_ND_nir_swir1", "rainy_ND_swir1_swir2", "rainy_tcAngleGW", \
-					#			  "dryhot_ND_swir1_swir2", "drycool_tcAngleGW", "rainy_R_red_swir1", \
-					#			  "dryhot_tcAngleGW", "drycool_ND_swir1_swir2", "rainy_swir1_stdDev", \
-					#			  "dryhot_greenness", "drycool_nir", "drycool_R_red_swir1", "dryhot_thermal", \
-					#			  "dryhot_ND_red_swir1", "dryhot_blue", "dryhot_R_red_swir1", \
-					#			  "rainy_ND_green_swir1_stdDev", "rainy_nir"]);
+		training_bands = bands 
 		
 		data = data.select(training_bands.add(self.env.classFieldName))
 		# Find the average number of observations (avgMin = 5000/nClasses)
@@ -871,10 +855,6 @@ if __name__ == "__main__":
 	# user account to run task on
 	userName = args.user
 	y = int(args.year)
-	#self.env.year = year
-
-	# create a new file in ~/.config/earthengine/credentials with token of user
-	addUserCredentials(userName)
 
 	ee.Initialize()
 	
@@ -885,18 +865,5 @@ if __name__ == "__main__":
 	drycool = ee.Image("projects/servir-mekong/usgs_sr_composites/dryhot/SC_dryhot" + str(y) + "_"  + str(y) + env.composite) .clip(env.studyArea)
 	rainy = ee.Image("projects/servir-mekong/usgs_sr_composites/rainy/SC_rainy" + str(y) + "_"  + str(y) + env.composite).clip(env.studyArea)
 	
-	#if env.composite == "Median":
-		#trainingData = ee.FeatureCollection("14AwPqA8ADQU5kCdPN-J2HdD8qUQlREWH97fajYeZ") # all barren, ..
-		#trainingData = ee.FeatureCollection("ft:1M71zwCyPyqEEuq8IBrWewONoBVDWHl22D01siCV_") # wetlands
-	    #trainingData = ee.FeatureCollection("ft:1pLatAgQLPdzU__wFLZ74591o-t-RwnHNSAayeket") # mangroves
-#	selectedBandsMedian = ["drycool_green","drycool_ND_blue_nir","drycool_ND_green_red","drycool_ND_swir1_swir2","drycool_nir","drycool_R_red_swir1","drycool_tcAngleBW","drycool_tcAngleGW","drycool_tcDistBG","dryhot_blue","dryhot_ND_blue_swir1","dryhot_ND_green_red","dryhot_ND_green_swir2","dryhot_nir","dryhot_R_red_swir1","dryhot_tcAngleGW","dryhot_tcDistBG","dryhot_tcDistGW","elevation","rainy_blue","rainy_ND_blue_green","rainy_ND_blue_nir","rainy_ND_blue_red","rainy_ND_blue_swir2","rainy_ND_green_red","rainy_ND_green_swir2","rainy_nir","rainy_R_red_swir1","rainy_R_swir1_nir","rainy_tcAngleBW","rainy_tcAngleGW","rainy_tcDistBG","slope"]
-	
-	#if env.composite == "Medoid":
-	#    trainingData = ee.FeatureCollection("ft:1QyUHohRqWW7HEqag0Yio6z99_LLFJNfmyF7XXEYq")
-#	selectedBandsMedoid = ["drycool_blue","drycool_ND_blue_nir","drycool_ND_blue_swir2","drycool_ND_green_red","drycool_ND_swir1_swir2","drycool_nir","drycool_R_red_swir1","drycool_R_swir1_nir","drycool_tcAngleBW","drycool_tcAngleGW","drycool_tcDistBG","dryhot_green","dryhot_ND_blue_swir1","dryhot_ND_blue_swir2","dryhot_ND_green_red","dryhot_ND_green_swir2","dryhot_nir","dryhot_R_red_swir1","dryhot_tcAngleGW","dryhot_tcDistBG","dryhot_tcDistGW","elevation","rainy_blue","rainy_ND_blue_green","rainy_ND_blue_nir","rainy_ND_blue_red","rainy_ND_blue_swir2","rainy_ND_green_red","rainy_ND_green_swir2","rainy_ND_red_swir2","rainy_nir","rainy_R_red_swir1","rainy_tcAngleBW","rainy_tcAngleGW","rainy_tcDistBG","slope"]
-	
-	
-	#trainingData = ee.FeatureCollection("ft:" + env.trainingData)
-
-	primitives().createPrimitive(drycool,dryhot,rainy,y,args.primitive)#,selectedBandsMedoid )
+	primitives().createPrimitive(drycool,dryhot,rainy,y,args.primitive)
 

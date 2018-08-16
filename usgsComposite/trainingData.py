@@ -35,7 +35,6 @@ import ee
 import logging
 import time
 import math
-from usercredentials import addUserCredentials
 import argparse
 import numpy as np
 
@@ -317,7 +316,7 @@ class trainingData():
 	def createTrainingSample(self,trainData,composite,y):
 		
 		date = ee.Date.fromYMD(y,1,1)
-		trainingData_yr = ee.FeatureCollection(trainData).filter(ee.Filter.eq('Year',y)); 
+		trainingData_yr = ee.FeatureCollection(trainData).filter(ee.Filter.eq('year',y)); 
 		
 		print trainingData_yr.size().getInfo()
 		
@@ -407,11 +406,7 @@ class primitives():
 		treeheight = ee.Image(ee.ImageCollection("projects/servir-mekong/Primitives/P_tree_height").filterDate(start,end).first()).rename(["treeheight"])
 		composite = composite.addBands(treeheight)
 			
-		auto = ee.Image("users/servirmekong/autocor/autocor_year_2015").select("autocorrelation")
-		composite = composite.addBands(auto.rename(["auto"]))
-		cycle = ee.Image("users/servirmekong/seasons/seasons_year_2015")
-		composite = composite.addBands(cycle)
-		
+
 		allIndices = ["ND_blue_green","ND_blue_red","ND_blue_nir","ND_blue_swir1", \
 			   "ND_blue_swir2","ND_green_red","ND_green_nir","ND_green_swir1", \
 			   "ND_green_swir2","ND_red_swir1","ND_red_swir2","ND_nir_red", \
@@ -432,8 +427,9 @@ class primitives():
 		distCoast = ['distCoast']
 		forestLayers = ['tcc', 'treeheight']
 		irrigated = ['auto','R2_cycle1','R2_cycle2','R2_cycle3']
+		
 		# combine all training bands
-		trainingBands = self.renameBands(allIndices,"dryhot") + self.renameBands(allIndices,"drycool") + self.renameBands(allIndices,"rainy") + elevationBands + jrcBands + distCoast + forestLayers + nightLights
+		trainingBands = self.renameBands(allIndices,"dryhot") + self.renameBands(allIndices,"drycool") + self.renameBands(allIndices,"rainy") + elevationBands + jrcBands + distCoast + nightLights
 		
 		# select training bands
 		composite = composite.select(trainingBands)
@@ -576,7 +572,6 @@ class primitives():
 		task_ordered.start() 
 		
 
-
 if __name__ == "__main__":
   
     # set argument parsing object
@@ -590,42 +585,36 @@ if __name__ == "__main__":
 	# user account to run task on
 	userName = args.user
 
-	## create a new file in ~/.config/earthengine/credentials with token of user
-	addUserCredentials(userName)
-
 	ee.Initialize()
-    
-    # need a function to select unique years from ft here
-        
-	calibrationSet = ee.FeatureCollection("users/servirmekong/reference/grassAllYearsUpdated") #.randomColumn("rand")
+	
+    # need a function to select unique years from ft here    
+	calibrationSet = ee.FeatureCollection("/path/to/featureCallibration") 
+	# feature collection needs to contain: 1. land_class 2. year
 
-	#calibrationSet = calibrationSet.filter(ee.Filter.lt("rand",0.100))
-	#years = [2009,2010,2011,2014,2015,2016]
-	years = [2001,2003,2004,2005,2006,2007,2008,2009,2010,2011,2014,2015]
+	years = range(2000,2010,1)
     
 	counter = 0
 	for y in years:
-		calibrationSET = calibrationSet # .filter(ee.Filter.lt("rand",0.200))
-		print y
+		calibrationSET = calibrationSet
+	
 		## import the images
-		dryhot = ee.Image("projects/servir-mekong/usgs_sr_composites/dryhot/SC_dryhot" + str(y) + "_" + str(y) +"Medoid")
-		drycool = ee.Image("projects/servir-mekong/usgs_sr_composites/drycool/SC_drycool" + str(y-1) + "_" + str(y) + "Medoid")
-		rainy = ee.Image("projects/servir-mekong/usgs_sr_composites/rainy/SC_rainy" + str(y) + "_" + str(y) + "Medoid")
+		dryhot = ee.Image("/path/to/dryhot")
+		drycool = ee.Image("/path/to/drycool")
+		rainy = ee.Image("/path/to/rainy")
 
 		composite = primitives().createIndices(drycool,dryhot,rainy,y)
-		##print composite.bandNames().getInfo()
+		
 		if counter == 0:
 		    reference = trainingData().createTrainingSample(calibrationSET,composite,y)
 		    
 		if counter > 0:
 		    
 		    train = trainingData().createTrainingSample(calibrationSET,composite,y)
-		    print counter
 		    reference = reference.merge(train)
 	
 		counter+=1
 	
-	task = ee.batch.Export.table.toDrive(reference,"grassAllYearsUpdated");
+	task = ee.batch.Export.table.toDrive(reference,"csvtoDrive");
 			
 	task.start() 
 		
