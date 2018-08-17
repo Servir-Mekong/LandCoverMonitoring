@@ -84,7 +84,7 @@ class environment(object):
  
 		collectionName = "users/servirmekong/Nepal/" + args.season 
 		
-		aoi = ee.Geometry.Polygon([[85.25,27.676],[85.40475,27.65598],[85.38861,27.76206],[85.28047,27.76540],[85.2595,27.67666]])
+		#aoi = ee.Geometry.Polygon([[[84.9601342942816,28.412985417510814],[84.8887231614691,27.310613144962876],[85.4380395677191,27.12009683732014],[85.7841089036566,28.161451992773063],[84.9601342942816,28.412985417510814]]])
 		self.region = aoi 
 		#self.mekongRegion = ee.FeatureCollection('ft:1LEGeqwlBCAlN61ie5ol24NdUDqB1MgpFR_sJNWQJ')
 		
@@ -866,8 +866,8 @@ class SurfaceReflectance():
 				
 				out = img_plus_ic_mask2.select('IC', band).reduceRegion(reducer= ee.Reducer.linearFit(), \
 				geometry= ee.Geometry(img.geometry().buffer(-5000)), \
-							  scale= 120, \
-							  maxPixels = 1e13); 
+							  scale= 90, \
+							  maxPixels = 10000000); 
 
 				out_a = ee.Number(out.get('scale'));
 				out_b = ee.Number(out.get('offset'));
