@@ -22,17 +22,13 @@ $ python  model.py {options}
 				 : changed for other geographic areas
 				 : options are 'drycool', 'dryhot', or 'rainy'
 
---user (-u)	  : user account used to create the composite
-				 : changes the ~/.config/earthengine/credentials file
-				 : dictionary is called to get credentials
-				 : options are servirmekong, servir-mekong, ate, biplov .. default is servir-mekong
 
 Example Usage
 -------------
 
 1) export surface reflectance composite for dryhot season of 2000 to assets:
 
-  $ python model.py -y 2000 -s drycool -u Quyen
+  $ python model.py -y 2000 -s drycool 
 
 """
 
