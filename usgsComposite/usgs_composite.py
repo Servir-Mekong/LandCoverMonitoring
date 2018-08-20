@@ -88,7 +88,7 @@ class environment(object):
 		
 		# variables for the tdom filter
 		self.applyTDOM = True
-		self.TDOMyears = 25
+		self.TDOMyears = 10
 		self.shadowSumBands = ['nir','swir1'];
 		self.zScoreThresh = -0.8
 		self.shadowSumThresh = 0.35;
@@ -261,7 +261,7 @@ class SurfaceReflectance():
 		logging.info('Cloudcover filter = ' + str(self.env.metadataCloudCoverMax))		
 		
 		# get the images
-		collection = self.GetLandsat(startDate,endDate,self.env.metadataCloudCoverMax,0).select(self.env.exportBands)
+		collection = self.GetLandsat(startDate,endDate,self.env.metadataCloudCoverMax,0,True).select(self.env.exportBands)
 		
 
 		count = ee.Image(collection.select(['blue']).count().rename('count')).int16()
@@ -335,7 +335,7 @@ class SurfaceReflectance():
 		self.ExportToAsset(img,self.env.outputName)
 				 
 
-	def GetLandsat(self,startDate,endDate,metadataCloudCoverMax,year):
+	def GetLandsat(self,startDate,endDate,metadataCloudCoverMax,year,terrain=False):
 		"""Get the Landsat imagery"""  
 		
 		logging.info('getting landsat images')
@@ -347,7 +347,7 @@ class SurfaceReflectance():
 			landsat4 =  ee.ImageCollection('LANDSAT/LT04/C01/T1_SR').filterDate(startDate,endDate).filterBounds(self.env.location)
 			landsat4 = landsat4.filter(ee.Filter.calendarRange(self.env.startJulian,self.env.endJulian))	 
 			landsat4 = landsat4.filterMetadata('CLOUD_COVER','less_than',metadataCloudCoverMax)
-			
+		
 		self.env.landsat4count += int(landsat4.size().getInfo())
 		if landsat4.size().getInfo() > 0:
 			if self.env.defringe == True:
@@ -423,13 +423,15 @@ class SurfaceReflectance():
 		landsatCollection = landsatCollection.map(self.ScaleLandsat)	  
 		
 		
-		if self.env.brdfCorrection == True:
-			print "applying brdf correction"
-			landsatCollection = landsatCollection.map(self.brdf)
-	
-		if self.env.terrainCorrection == True:
-			print "applying terrain correction"
-			landsatCollection = ee.ImageCollection(landsatCollection.map(self.terrain))
+		
+		if terrain:
+			if self.env.brdfCorrection == True:
+				print "applying brdf correction"
+				landsatCollection = landsatCollection.map(self.brdf)
+		
+			if self.env.terrainCorrection == True:
+				print "applying terrain correction"
+				landsatCollection = ee.ImageCollection(landsatCollection.map(self.terrain))
 
 		if merge:
 			count = landsatCollection.size(); 
@@ -791,21 +793,22 @@ class SurfaceReflectance():
 		degree2radian = 0.01745;
 		thermalBand = img.select(['thermal'])
 		img = img.unmask(0)
-	 
+		dem = self.env.dem.unmask(0)	
+		geom = ee.Geometry(img.get('system:footprint')).bounds().buffer(1000) 
+		
 		def topoCorr_IC(img):
 				
 			
-			dem = self.env.dem.unmask(0)	
-			
+
 			# Extract image metadata about solar position
-			SZ_rad = ee.Image.constant(ee.Number(img.get('SOLAR_ZENITH_ANGLE'))).multiply(degree2radian).clip(img.geometry().buffer(10000)); 
-			SA_rad = ee.Image.constant(ee.Number(img.get('SOLAR_AZIMUTH_ANGLE'))).multiply(degree2radian).clip(img.geometry().buffer(10000)); 
+			SZ_rad = ee.Image.constant(ee.Number(img.get('SOLAR_ZENITH_ANGLE'))).multiply(degree2radian).clip(geom); 
+			SA_rad = ee.Image.constant(ee.Number(img.get('SOLAR_AZIMUTH_ANGLE'))).multiply(degree2radian).clip(geom); 
 				
 					
 			# Creat terrain layers
 			slp = ee.Terrain.slope(dem).clip(img.geometry().buffer(10000));
-			slp_rad = ee.Terrain.slope(dem).multiply(degree2radian).clip(img.geometry().buffer(10000));
-			asp_rad = ee.Terrain.aspect(dem).multiply(degree2radian).clip(img.geometry().buffer(10000));
+			slp_rad = ee.Terrain.slope(dem).multiply(degree2radian).clip(geom);
+			asp_rad = ee.Terrain.aspect(dem).multiply(degree2radian).clip(geom);
 	  
 	  
 				
@@ -861,10 +864,10 @@ class SurfaceReflectance():
 				method = 'SCSc';
 				
 				out = img_plus_ic_mask2.select('IC', band).reduceRegion(reducer= ee.Reducer.linearFit(), \
-				geometry= ee.Geometry(img.geometry().buffer(-5000)), \
-							  scale= 90, \
-							  maxPixels = 10000000); 
-
+				geometry= ee.Geometry(geom.buffer(-5000)), \
+							  scale= 100, \
+							  maxPixels = 100000000); 
+										  	
 				out_a = ee.Number(out.get('scale'));
 				out_b = ee.Number(out.get('offset'));
 				out_c = ee.Number(out.get('offset')).divide(ee.Number(out.get('scale')));
